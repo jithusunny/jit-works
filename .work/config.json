@@ -1,0 +1,19 @@
+{
+  "owner": "jithusunny",
+  "ownerType": "user",
+  "project": "1",
+  "productRepo": "jit-works",
+  "productName": "jit.works",
+  "retiredPlans": false,
+  "fieldIds": {
+    "Status": 369602981,
+    "Size": 369603110,
+    "Workflow": 369603111,
+    "Product": 370797397,
+    "Type": 369603112,
+    "Phase": 369603155,
+    "Area": 369603156,
+    "Priority": 369603157
+  },
+  "forbiddenPlanPaths": []
+}

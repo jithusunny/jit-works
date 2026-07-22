@@ -1,0 +1,13 @@
+{
+  "name": "jit-works",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:work",
+    "test:work": "node --test ops/*.test.mjs",
+    "work": "node ops/work.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

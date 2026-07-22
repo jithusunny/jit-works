@@ -1,0 +1,69 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { field, issueRef, matchingItems, normalizeRestItem, planRows, sameTitle, scopeProductItems, slug } from './work-lib.mjs';
+
+const items = [
+  { title: 'Create the public portfolio shell', product: 'jit.works', workflow: 'Ready', phase: '1 Secure foundation', area: 'Product', priority: 'P0', type: 'Slice', url: 'https://github.com/o/r/issues/1' },
+  { title: 'Public launch', product: 'Town', workflow: 'Deferred', phase: '4 Community preview', area: 'Release', priority: 'P2', type: 'Epic', url: 'https://github.com/o/r/issues/2' },
+];
+
+test('reads normalized Project fields', () => {
+  assert.equal(field(items[0], 'Workflow'), 'Ready');
+});
+
+test('normalizes REST Project items and single-select fields', () => {
+  const item = normalizeRestItem({
+    id: 17,
+    node_id: 'PVTI_17',
+    content_type: 'Issue',
+    content: {
+      title: 'A slice', body: 'Goal', number: 4,
+      html_url: 'https://github.com/o/r/issues/4',
+      created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
+      repository: { full_name: 'o/r' },
+    },
+    fields: [{ name: 'Workflow', value: { name: { raw: 'Ready' } } }],
+  });
+  assert.equal(item.restId, 17);
+  assert.equal(item.workflow, 'Ready');
+  assert.equal(item.content.repository, 'o/r');
+});
+
+test('parses only full GitHub issue URLs', () => {
+  assert.deepEqual(issueRef('https://github.com/o/r/issues/12'), { owner: 'o', repo: 'r', number: 12, url: 'https://github.com/o/r/issues/12' });
+  assert.throws(() => issueRef('#12'), /full GitHub issue URL/);
+});
+
+test('search includes exact and cautious fuzzy matches', () => {
+  assert.equal(matchingItems(items, 'portfolio').length, 1);
+  assert.equal(matchingItems(items, 'create shell', { fuzzy: true }).length, 1);
+  assert.equal(matchingItems(items, 'unrelated words', { fuzzy: true }).length, 0);
+});
+
+test('exact issue titles compare case-insensitively without fuzzy matching', () => {
+  assert.equal(sameTitle('Release CI', 'release ci'), true);
+  assert.equal(sameTitle('Release CI', 'Release CI follow-up'), false);
+});
+
+test('plan filters by phase and area and hides inactive work', () => {
+  assert.equal(planRows(items).length, 1);
+  assert.equal(planRows(items, { phase: '4', includeInactive: true })[0].title, 'Public launch');
+  assert.equal(planRows(items, { area: 'product' })[0].title, 'Create the public portfolio shell');
+  assert.equal(planRows(items, { product: 'town', includeInactive: true })[0].title, 'Public launch');
+});
+
+test('product scope excludes other repositories carrying the same Product value', () => {
+  const mixed = [
+    { product: 'jit.works', content: { repository: 'jithusunny/jit-works' }, title: 'Public slice' },
+    { product: 'jit.works', content: { repository: 'owner/another-repo' }, title: 'Other repository' },
+    { product: 'Town', content: { repository: 'jithusunny/jit-works' }, title: 'Wrong product' },
+  ];
+  assert.deepEqual(
+    scopeProductItems(mixed, { repository: 'jithusunny/jit-works', product: 'jit.works' }).map((item) => item.title),
+    ['Public slice'],
+  );
+});
+
+test('creates stable safe slugs', () => {
+  assert.equal(slug('A Huge Plan!.md'), 'a-huge-plan-md');
+});

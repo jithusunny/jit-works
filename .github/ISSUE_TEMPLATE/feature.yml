@@ -1,0 +1,52 @@
+name: Feature or improvement
+description: Propose a public, outcome-shaped change to jit.works.
+title: ""
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User and problem
+      description: Who needs this, and what is difficult or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current workaround
+      description: How is the need handled now, if at all?
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Observable outcome
+      description: What should become possible or noticeably better?
+    validations:
+      required: true
+  - type: textarea
+    id: first_version
+    attributes:
+      label: First-version scope
+      description: What is the smallest useful version?
+    validations:
+      required: true
+  - type: textarea
+    id: non_scope
+    attributes:
+      label: Not included
+      description: What tempting adjacent work is deliberately excluded?
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Material constraints
+      description: Note public privacy, accessibility, performance, compatibility, cost, or time constraints.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Acceptance evidence
+      description: What observable checks will prove the outcome works?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional public context
+      description: Add screenshots, links, or notes safe to publish. Never include secrets or private personal/customer information.

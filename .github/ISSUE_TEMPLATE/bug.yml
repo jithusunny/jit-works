@@ -1,0 +1,31 @@
+name: Bug report
+description: Report reproducible incorrect behavior in jit.works.
+title: ""
+labels:
+  - bug
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened?
+      description: Describe the incorrect behavior and where you saw it.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Give the shortest reliable sequence, including browser/device when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add public-safe screenshots, logs, or links. Remove secrets and personal data.
