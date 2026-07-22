@@ -4,28 +4,13 @@ Shared brief for every coding agent in this repository. Keep it short: operating
 
 jit.works is the public portfolio and studio website for Jithu Sunny. It should become one concise, credible link that shows selected work and makes it easy to start a conversation. The technical stack is not selected yet; choose it only when an implementation slice needs that decision.
 
-## Talking to me
-
-- Short and plain. Lead with the answer, then the reason in a few lines.
-- Be practical and unambiguous: say what changes, where, and what I will see.
-- When I ask why, what, or how, explain first; do not edit until I say go.
-- Make URLs clickable Markdown links.
-
-## How we work
-
-- Discuss ambiguous product or behavior choices; do not silently choose for me.
-- For clear execution, keep momentum. Stop only for a choice you genuinely cannot resolve.
-- Big or risky work: plan, red-team, then execute.
-- A skipped or declined question must stop the work; do not guess.
-- Operational status and priority come from `npm run work -- brief`.
-- Durable shared preferences belong here, not in an agent's private memory.
-
 ## Engineering bar
 
 Clean, lean, correct, maintainable. Use proportionate tests, review your own change, and update durable documentation with behavior. Avoid hacks, unused abstractions, and premature infrastructure.
 
 ## Start
 
+- Operational status and priority come from `npm run work -- brief`.
 - For any repository change, run `npm run work -- brief` before planning or editing.
 - Use the active item, or the first ready item when asked for the next work.
 - If the work service is unavailable, report it. Continue only from an issue the user explicitly selected; otherwise ask for the intended outcome.
