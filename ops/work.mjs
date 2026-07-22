@@ -153,7 +153,7 @@ function addIssueToProject(value, issueUrl) {
 
 function printItems(selected) {
   for (const item of selected) {
-    const labels = [field(item, 'Workflow'), field(item, 'Product'), field(item, 'Phase'), field(item, 'Area')].filter(Boolean).join(' / ');
+    const labels = [field(item, 'Status'), field(item, 'Product'), field(item, 'Phase'), field(item, 'Area')].filter(Boolean).join(' / ');
     console.log(`- ${title(item)}${labels ? ` [${labels}]` : ''}`);
     if (url(item)) console.log(`  ${url(item)}`);
   }
@@ -161,11 +161,11 @@ function printItems(selected) {
 
 function brief(value) {
   const all = productItems(value);
-  const withWorkflow = (name) => all.filter((item) => field(item, 'Workflow').toLowerCase() === name.toLowerCase());
-  const active = withWorkflow('In progress');
-  const ready = withWorkflow('Ready').slice(0, 3);
-  const blocked = withWorkflow('Blocked');
-  const done = withWorkflow('Done').slice(-3).reverse();
+  const withStatus = (name) => all.filter((item) => field(item, 'Status').toLowerCase() === name.toLowerCase());
+  const active = withStatus('In progress');
+  const ready = withStatus('Ready').slice(0, 3);
+  const blocked = withStatus('Blocked');
+  const done = withStatus('Done').slice(-3).reverse();
   const phases = [...new Set(active.map((item) => field(item, 'Phase')).filter(Boolean))];
 
   console.log(`Phase: ${phases.join(', ') || 'not selected'}`);
@@ -203,7 +203,7 @@ function showPlan(value, args) {
       console.log(group);
       lastGroup = group;
     }
-    console.log(`- ${row.workflow || 'No workflow'} · ${row.type || 'No type'} · ${row.priority || 'No priority'} · ${row.title}`);
+    console.log(`- ${row.status || 'No status'} · ${row.type || 'No type'} · ${row.priority || 'No priority'} · ${row.title}`);
     console.log(`  ${row.url}`);
   }
 }
@@ -235,7 +235,7 @@ function capture(value, args) {
     if (String(exact.state).toLowerCase() === 'open' && !projectItems.some((item) => url(item) === exact.url)) {
       const item = addIssueToProject(value, exact.url);
       setFields(value, item, {
-        Workflow: 'Inbox',
+        Status: 'Inbox',
         Product: value.productName,
         Type: option(args, '--type'),
         Area: option(args, '--area'),
@@ -264,7 +264,7 @@ function capture(value, args) {
   const issueUrl = gh(['issue', 'create', '--repo', repo, '--title', issueTitle, '--body', body]);
   const item = addIssueToProject(value, issueUrl);
   const selections = {
-    Workflow: 'Inbox',
+    Status: 'Inbox',
     Product: value.productName,
     Type: option(args, '--type'),
     Area: option(args, '--area'),
@@ -304,7 +304,7 @@ function start(value, args) {
   const selected = all.find((item) => url(item) === ref.url);
   if (!selected) throw new Error(`Issue is not in the Project: ${ref.url}`);
   assertProductIssue(value, selected);
-  if (field(selected, 'Workflow').toLowerCase() !== 'ready') throw new Error('Only a Ready item can start');
+  if (field(selected, 'Status').toLowerCase() !== 'ready') throw new Error('Only a Ready item can start');
   if (field(selected, 'Type').toLowerCase() === 'epic') throw new Error('Split the epic into S slices before starting');
   if (field(selected, 'Size').toLowerCase() !== 's') throw new Error('Only an S item can start');
   for (const name of ['Product', 'Phase', 'Area', 'Priority', 'Type']) {
@@ -312,13 +312,13 @@ function start(value, args) {
   }
   const blockers = dependencyData(ref, 'blocked_by').filter((issue) => issue.state !== 'closed');
   if (blockers.length) throw new Error(`Open blocker: ${blockers[0].html_url}`);
-  const active = all.filter((item) => field(item, 'Workflow').toLowerCase() === 'in progress');
+  const active = all.filter((item) => field(item, 'Status').toLowerCase() === 'in progress');
   if (active.length && !args.includes('--parallel')) throw new Error(`Another item is active: ${url(active[0])}`);
   if (active.length >= 3) throw new Error('Three items are already active');
   if (args.includes('--parallel')) {
     console.log('Parallel work requires a separate branch or worktree with independent files and dependencies.');
   }
-  setField(value, selected, 'Workflow', 'In progress');
+  setField(value, selected, 'Status', 'In progress');
   console.log(`Started: ${ref.url}`);
 }
 
@@ -335,39 +335,33 @@ function finish(value, args) {
   const selected = projectItem(value, ref.url);
   if (!selected) throw new Error(`Issue is not in the Project: ${ref.url}`);
   assertProductIssue(value, selected);
-  if (field(selected, 'Workflow').toLowerCase() !== 'in progress') throw new Error('Only an In progress item can finish');
+  if (field(selected, 'Status').toLowerCase() !== 'in progress') throw new Error('Only an In progress item can finish');
   const openChildren = subIssues(ref).filter((issue) => issue.state !== 'closed');
   if (openChildren.length) throw new Error(`Open sub-issue: ${openChildren[0].html_url}`);
   gh(['issue', 'comment', ref.url, '--body', `## Verification\n\n${evidence}`]);
   gh(['issue', 'close', ref.url]);
-  setField(value, selected, 'Workflow', 'Done');
+  setField(value, selected, 'Status', 'Done');
   console.log(`Finished: ${ref.url}`);
 }
 
 function audit(value) {
   const all = productItems(value);
-  const active = all.filter((item) => field(item, 'Workflow').toLowerCase() === 'in progress');
-  const ready = all.filter((item) => field(item, 'Workflow').toLowerCase() === 'ready');
-  const controlled = all.filter((item) => ['ready', 'in progress', 'blocked'].includes(field(item, 'Workflow').toLowerCase()));
+  const active = all.filter((item) => field(item, 'Status').toLowerCase() === 'in progress');
+  const ready = all.filter((item) => field(item, 'Status').toLowerCase() === 'ready');
+  const controlled = all.filter((item) => ['ready', 'in progress', 'blocked'].includes(field(item, 'Status').toLowerCase()));
   const problems = [];
   if (active.length > 3) problems.push(`${active.length} items are in progress (maximum 3)`);
   if (ready.length > 5) problems.push(`${ready.length} items are ready (maximum 5)`);
-  const inbox = all.filter((item) => field(item, 'Workflow').toLowerCase() === 'inbox');
+  const inbox = all.filter((item) => field(item, 'Status').toLowerCase() === 'inbox');
   if (inbox.length >= 10) problems.push(`${inbox.length} items are in Inbox; triage before adding more`);
   for (const item of controlled) {
     for (const name of ['Product', 'Phase', 'Area', 'Priority', 'Type', 'Size']) {
-      if (!field(item, name)) problems.push(`${field(item, 'Workflow')} item has no ${name}: ${title(item)}`);
+      if (!field(item, name)) problems.push(`${field(item, 'Status')} item has no ${name}: ${title(item)}`);
     }
   }
   for (const item of [...active, ...ready]) {
-    if (field(item, 'Type').toLowerCase() === 'epic') problems.push(`${field(item, 'Workflow')} epic must be split: ${title(item)}`);
-    if (field(item, 'Size').toLowerCase() !== 's') problems.push(`${field(item, 'Workflow')} item is not S: ${title(item)}`);
-  }
-  for (const item of all) {
-    const workflow = field(item, 'Workflow').toLowerCase();
-    const builtInStatus = field(item, 'Status').toLowerCase();
-    if (builtInStatus === 'done' && workflow && workflow !== 'done') problems.push(`closed issue is not Workflow Done: ${title(item)}`);
-    if (builtInStatus && builtInStatus !== 'done' && workflow === 'done') problems.push(`open issue is Workflow Done: ${title(item)}`);
+    if (field(item, 'Type').toLowerCase() === 'epic') problems.push(`${field(item, 'Status')} epic must be split: ${title(item)}`);
+    if (field(item, 'Size').toLowerCase() !== 's') problems.push(`${field(item, 'Status')} item is not S: ${title(item)}`);
   }
   const now = Date.now();
   for (const item of active) {

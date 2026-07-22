@@ -72,7 +72,7 @@ export function matchingItems(items, query, options = {}) {
   const needle = text(query).toLowerCase();
   const queryWords = words(query);
   return items.filter((item) => {
-    const haystack = [title(item), item.content?.body, url(item), field(item, 'Workflow'), field(item, 'Product'), field(item, 'Phase'), field(item, 'Area')]
+    const haystack = [title(item), item.content?.body, url(item), field(item, 'Status'), field(item, 'Product'), field(item, 'Phase'), field(item, 'Area')]
       .filter(Boolean).join(' ').toLowerCase();
     if (haystack.includes(needle)) return true;
     if (!options.fuzzy || !queryWords.size) return false;
@@ -85,12 +85,12 @@ export function matchingItems(items, query, options = {}) {
 export function planRows(items, filters = {}) {
   const inactive = new Set(['done', 'deferred']);
   return items
-    .filter((item) => filters.includeInactive || !inactive.has(normalizeChoice(field(item, 'Workflow'))))
+    .filter((item) => filters.includeInactive || !inactive.has(normalizeChoice(field(item, 'Status'))))
     .filter((item) => !filters.product || normalizeChoice(field(item, 'Product')).includes(normalizeChoice(filters.product)))
     .filter((item) => !filters.phase || normalizeChoice(field(item, 'Phase')).includes(normalizeChoice(filters.phase)))
     .filter((item) => !filters.area || normalizeChoice(field(item, 'Area')).includes(normalizeChoice(filters.area)))
     .map((item) => ({
-      product: field(item, 'Product'), phase: field(item, 'Phase'), area: field(item, 'Area'), workflow: field(item, 'Workflow'),
+      product: field(item, 'Product'), phase: field(item, 'Phase'), area: field(item, 'Area'), status: field(item, 'Status'),
       type: field(item, 'Type'), priority: field(item, 'Priority'), title: title(item), url: url(item),
     }))
     .sort((a, b) => [a.phase, a.area, a.priority, a.title].join('|').localeCompare([b.phase, b.area, b.priority, b.title].join('|')));

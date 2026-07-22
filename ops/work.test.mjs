@@ -3,12 +3,12 @@ import test from 'node:test';
 import { field, issueRef, matchingItems, normalizeRestItem, planRows, sameTitle, scopeProductItems, slug } from './work-lib.mjs';
 
 const items = [
-  { title: 'Create the public portfolio shell', product: 'jit.works', workflow: 'Ready', phase: '1 Secure foundation', area: 'Product', priority: 'P0', type: 'Slice', url: 'https://github.com/o/r/issues/1' },
-  { title: 'Public launch', product: 'Town', workflow: 'Deferred', phase: '4 Community preview', area: 'Release', priority: 'P2', type: 'Epic', url: 'https://github.com/o/r/issues/2' },
+  { title: 'Create the public portfolio shell', product: 'jit.works', status: 'Ready', phase: '1 Secure foundation', area: 'Product', priority: 'P0', type: 'Slice', url: 'https://github.com/o/r/issues/1' },
+  { title: 'Public launch', product: 'Town', status: 'Deferred', phase: '4 Community preview', area: 'Release', priority: 'P2', type: 'Epic', url: 'https://github.com/o/r/issues/2' },
 ];
 
 test('reads normalized Project fields', () => {
-  assert.equal(field(items[0], 'Workflow'), 'Ready');
+  assert.equal(field(items[0], 'Status'), 'Ready');
 });
 
 test('normalizes REST Project items and single-select fields', () => {
@@ -22,10 +22,10 @@ test('normalizes REST Project items and single-select fields', () => {
       created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
       repository: { full_name: 'o/r' },
     },
-    fields: [{ name: 'Workflow', value: { name: { raw: 'Ready' } } }],
+    fields: [{ name: 'Status', value: { name: { raw: 'Ready' } } }],
   });
   assert.equal(item.restId, 17);
-  assert.equal(item.workflow, 'Ready');
+  assert.equal(item.status, 'Ready');
   assert.equal(item.content.repository, 'o/r');
 });
 
