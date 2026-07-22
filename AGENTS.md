@@ -38,6 +38,7 @@ Clean, lean, correct, maintainable. Use proportionate tests, review your own cha
 - GitHub issues are the public work records. This repository contains every public constraint needed to understand, build, test, and contribute to jit.works.
 - Never depend on, mention, or search for undisclosed repositories or private planning.
 - Search open and closed work before creating an issue. Update an existing item instead of duplicating it.
+- Create or edit issue bodies through a Markdown file or stdin with real line breaks; never build them from escaped `\n` text. Re-read the saved body after writing and fix malformed Markdown before continuing.
 - Treat a large brainstorm as intake evidence, not an automatic roadmap. Reconcile it with existing work first, and never commit sensitive raw material.
 - Ask before a material phase change, cancellation, public release, destructive action, or rewrite of an accepted outcome. Small deduplication and clearer wording do not need approval.
 - For explicitly requested scoped work, commit, push, and merge after checks pass, the diff is reviewed, and no critical finding remains. Ask only when a genuine unresolved user choice remains.
