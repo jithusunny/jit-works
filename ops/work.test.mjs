@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { field, issueRef, matchingItems, normalizeRestItem, planRows, sameTitle, scopeProductItems, slug } from './work-lib.mjs';
 
@@ -66,4 +67,11 @@ test('product scope excludes other repositories carrying the same Product value'
 
 test('creates stable safe slugs', () => {
   assert.equal(slug('A Huge Plan!.md'), 'a-huge-plan-md');
+});
+
+test('labels readiness as product-local instead of global priority', () => {
+  const source = readFileSync(new URL('./work.mjs', import.meta.url), 'utf8');
+  assert.match(source, /Ready here:/);
+  assert.doesNotMatch(source, /console\.log\(`Next:/);
+  assert.match(source, /Show this product's active work, Ready options/);
 });

@@ -10,9 +10,12 @@ Clean, lean, correct, maintainable. Use proportionate tests, review your own cha
 
 ## Start
 
-- Operational status and priority come from `npm run work -- brief`.
+- Product-local status comes from `npm run work -- brief`. Its Ready list is not a cross-product
+  priority decision.
 - For any repository change, run `npm run work -- brief` before planning or editing.
-- Use the active item, or the first ready item when asked for the next work.
+- Work on the issue the user selected. If the user explicitly wants to continue this product, use
+  its active item or help choose a local Ready item. Do not automatically start another item after
+  completing a slice unless the user approved a bounded issue sequence or focus run.
 - If the work service is unavailable, report it. Continue only from an issue the user explicitly selected; otherwise ask for the intended outcome.
 - Read only the selected issue and the technical references it explicitly links.
 - Before implementation, confirm the user/problem, observable outcome, first-version scope, non-scope, constraints, and acceptance evidence are clear enough. Skip this ceremony for an obvious bug or routine task.
@@ -21,13 +24,17 @@ Clean, lean, correct, maintainable. Use proportionate tests, review your own cha
 ## Work tracking
 
 - GitHub issues are the public work records. This repository contains every public constraint needed to understand, build, test, and contribute to jit.works.
-- Never depend on, mention, or search for undisclosed repositories or private planning.
+- Every issue and tracked artifact must stand alone. Never record, require, link, or reconstruct
+  undisclosed context in this repository.
 - Search open and closed work before creating an issue. Update an existing item instead of duplicating it.
 - Create or edit issue bodies through a Markdown file or stdin with real line breaks; never build them from escaped `\n` text. Re-read the saved body after writing and fix malformed Markdown before continuing.
 - Treat a large brainstorm as intake evidence, not an automatic roadmap. Reconcile it with existing work first, and never commit sensitive raw material.
 - Ask before a material phase change, cancellation, public release, destructive action, or rewrite of an accepted outcome. Small deduplication and clearer wording do not need approval.
 - For explicitly requested scoped work, commit, push, and merge after checks pass, the diff is reviewed, and no critical finding remains. Ask only when a genuine unresolved user choice remains.
-- New durable findings go to Inbox and do not displace active work unless they reveal a critical security, data-loss, privacy, or release-integrity risk.
+- New public-safe, product-specific findings go to this repository's Inbox and do not displace active
+  work unless they reveal a critical security, data-loss, privacy, or release-integrity risk. Ask the
+  user to capture private, commercial, customer, financial, legal, sensitive-security, or
+  cross-product findings in an appropriate private context; do not record that context here.
 - Keep one primary implementation item active. Split epics and multi-day work into small verifiable slices.
 - The selected public issue is the handoff and must stand on its own.
 
@@ -44,6 +51,8 @@ Briefly nudge when work bypasses the active item, duplicates status, reopens set
 5. Review the diff for regressions, security, privacy, accessibility, and operational effects.
 6. Record verification and link the commit or pull request before closing the issue.
 7. Capture genuine follow-ups in Inbox instead of expanding the slice.
+8. Stop after the slice. Continue back-to-back only within an explicitly approved issue sequence or
+   bounded focus run; otherwise let the user choose the next work from their wider context.
 
 ## Repository layout and commands
 
@@ -68,4 +77,5 @@ Briefly nudge when work bypasses the active item, duplicates status, reopens set
 - Relevant tests, builds, and runtime checks were run.
 - Documentation describing changed behavior is current.
 - No unresolved critical review finding remains.
-- The work item is updated, and `npm run work -- brief` gives the next step.
+- The work item is updated, and `npm run work -- brief` shows this product's current state and local
+  Ready options.

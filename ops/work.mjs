@@ -170,7 +170,7 @@ function brief(value) {
 
   console.log(`Phase: ${phases.join(', ') || 'not selected'}`);
   console.log(`Active: ${active.length ? active.map(title).join(' | ') : 'none'}`);
-  console.log(`Next: ${ready.length ? ready.map(title).join(' | ') : 'none ready'}`);
+  console.log(`Ready here: ${ready.length ? ready.map(title).join(' | ') : 'none ready'}`);
   console.log(`Blocked: ${blocked.length ? blocked.map(title).join(' | ') : 'none'}`);
   console.log(`Recently done: ${done.length ? done.map(title).join(' | ') : 'none recorded'}`);
   if (active[0] && url(active[0])) console.log(`Open: ${url(active[0])}`);
@@ -394,7 +394,7 @@ function audit(value) {
 function help() {
   console.log(`Usage: npm run work -- <command>
 
-brief                          Show this product's active work, next three, blockers, and recent wins
+brief                          Show this product's active work, Ready options, blockers, and recent wins
 plan [--phase X] [--area X]
                                Show planned work; add --all for Done/Deferred
 search <text>                  Search this product's work and durable knowledge
