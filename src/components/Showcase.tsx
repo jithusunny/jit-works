@@ -210,9 +210,6 @@ export default function Showcase({ variant }: Props) {
   const [isMobile, setIsMobile] = useState(false);
   const [isShort, setIsShort] = useState(false);
   const [lightbox, setLightbox] = useState<{ id: string; i: number } | null>(null);
-  // The carousel stays hidden until the track is measured and correctly centered,
-  // so no mis-aligned first frame is ever shown.
-  const [laid, setLaid] = useState(false);
 
   const trackRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -248,6 +245,9 @@ export default function Showcase({ variant }: Props) {
   // Slide animation stays off until the initial layout settles, so early re-measures
   // reposition instantly instead of animating a visible jump.
   const slideReady = useRef(false);
+  // True once JS has measured and placed the track at least once. Before that the
+  // server-rendered CSS transform (see the track's initial style) keeps the first
+  // frame correctly centered, so the carousel is visible from the very first paint.
   const laidRef = useRef(false);
   const trans = () => (slideReady.current ? TRACK_TRANS : 'none');
 
@@ -456,16 +456,16 @@ export default function Showcase({ variant }: Props) {
 
     applyLayout();
     // measureStep is deterministic (viewport-width based), so the very first placement is
-    // already correct — reveal immediately at hydration instead of waiting on the rAF loop.
-    if (m.current.step > 0) { laidRef.current = true; setLaid(true); }
+    // already correct at hydration.
+    if (m.current.step > 0) laidRef.current = true;
     const t1 = setTimeout(applyLayout, 220);
     const t2 = setTimeout(() => {
       applyLayout();
       slideReady.current = true; // layout settled; future navigation may animate
     }, 750);
-    // Safety: reveal even if the first measure somehow failed.
+    // Safety: place correctly even if the first measure somehow failed.
     const tReveal = setTimeout(() => {
-      if (!laidRef.current) { applyLayout(); laidRef.current = true; setLaid(true); }
+      if (!laidRef.current) { applyLayout(); laidRef.current = true; }
     }, 1300);
     try {
       if (document.fonts?.ready) document.fonts.ready.then(applyLayout);
@@ -511,14 +511,13 @@ export default function Showcase({ variant }: Props) {
       m.current.last = t;
       if (dt > 120) dt = 120;
       // Until the first correct layout: re-measure every frame (an early measurement can
-      // cache a too-small step and mis-center card 0). Reveal only once the step is a
-      // plausible card-width apart, placed without animation.
+      // cache a too-small step and mis-center card 0). Place only once the step is a
+      // plausible card-width apart, without animation.
       if (!laidRef.current) {
         measureStep();
         if (m.current.cardW > 0 && m.current.step > m.current.cardW * 0.6) {
           place(true);
           laidRef.current = true;
-          setLaid(true);
         }
         m.current.raf = requestAnimationFrame(loop);
         return;
@@ -605,7 +604,10 @@ export default function Showcase({ variant }: Props) {
     : 'radial-gradient(ellipse 62% 66% at 36% 46%, #000 22%, rgba(0,0,0,0.9) 42%, rgba(0,0,0,0.6) 62%, rgba(0,0,0,0.32) 78%, rgba(0,0,0,0.1) 91%, transparent 100%)';
   const photoStyle = sx({
     width: '100%', height: '100%', objectFit: 'cover',
-    objectPosition: isMobile ? '42% 20%' : '40% 70%',
+    // Desktop crop pans right/up over the source (there is spare room left of Jithu and
+    // overhead), pulling both people and the handshake into the mask's clear centre and
+    // off the hero text.
+    objectPosition: isMobile ? '42% 20%' : '50% 77%',
     opacity: isMobile ? PHOTO_OPACITY_MOBILE : PHOTO_OPACITY_DESKTOP,
     WebkitMaskImage: photoMask, maskImage: photoMask, animation: 'fadeIn 0.9s ease both',
   });
@@ -618,8 +620,10 @@ export default function Showcase({ variant }: Props) {
   const cardInfoColStyle = isMobile
     ? sx({ flex: 'none', display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden' })
     : sx({ flex: '1 1 0', minWidth: '280px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 'clamp(8px,1.8vh,22px)', padding: 'clamp(4px,0.5vw,10px) 0', overflow: 'hidden' });
+  // On mobile the tinted panel + thumbnail strip read as boxes-inside-boxes at card size,
+  // so the shot sits directly on the card with a small shot-count chip instead.
   const cardMediaColStyle = isMobile
-    ? sx({ flex: '1 1 auto', minHeight: '150px', display: 'flex', flexDirection: 'column', gap: '8px', borderRadius: '16px', overflow: 'hidden', background: 'radial-gradient(120% 130% at 78% 12%, #EAF1E3 0%, #E3EBDC 55%, #DEE7D6 100%)', padding: '10px' })
+    ? sx({ flex: '1 1 auto', minHeight: '150px', display: 'flex', flexDirection: 'column' })
     : sx({ flex: '1.7 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'clamp(8px,0.9vw,12px)', borderRadius: 'clamp(16px,1.8vw,28px)', overflow: 'hidden', background: 'radial-gradient(120% 130% at 78% 12%, #EAF1E3 0%, #E3EBDC 55%, #DEE7D6 100%)', padding: 'clamp(10px,1.2vw,18px)' });
 
   return (
@@ -642,9 +646,9 @@ export default function Showcase({ variant }: Props) {
             href={UPWORK_URL}
             target="_blank"
             rel="noopener"
-            style={sx({ display: 'inline-flex', alignItems: 'center', gap: '13px', background: '#2E5E43', color: '#F1F7F0', cursor: 'pointer', padding: 'clamp(11px,1.05vw,28px) clamp(18px,2vw,52px)', borderRadius: '18px', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 'clamp(15px,1.35vw,34px)', lineHeight: 1, boxShadow: '0 14px 30px -12px rgba(46,94,67,0.75)' })}
+            style={sx({ display: 'inline-flex', alignItems: 'center', gap: 'clamp(8px,0.7vw,13px)', background: '#2E5E43', color: '#F1F7F0', cursor: 'pointer', padding: 'clamp(9px,1.05vw,28px) clamp(15px,2vw,52px)', borderRadius: 'clamp(12px,0.95vw,18px)', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 'clamp(13px,1.35vw,34px)', lineHeight: 1, boxShadow: '0 14px 30px -12px rgba(46,94,67,0.75)' })}
           >
-            <span style={sx({ width: '14px', height: '14px', borderRadius: '50%', background: '#C9F24E' })} />
+            <span style={sx({ width: 'clamp(9px,0.73vw,14px)', height: 'clamp(9px,0.73vw,14px)', borderRadius: '50%', background: '#C9F24E' })} />
             {primaryLabel}
           </a>
           <button
@@ -657,9 +661,9 @@ export default function Showcase({ variant }: Props) {
               alt="Jithu"
               width={150}
               height={150}
-              style={sx({ width: 'clamp(44px,10.2vh,150px)', height: 'clamp(44px,10.2vh,150px)', borderRadius: '50%', objectFit: 'cover', border: '3px solid #FBF9F2', boxShadow: '0 10px 26px -8px rgba(46,94,67,0.6)' })}
+              style={sx({ width: 'clamp(42px,7.8vw,150px)', height: 'clamp(42px,7.8vw,150px)', borderRadius: '50%', objectFit: 'cover', border: '3px solid #FBF9F2', boxShadow: '0 10px 26px -8px rgba(46,94,67,0.6)' })}
             />
-            <span style={sx({ fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: 'clamp(14px,1.15vw,17px)', letterSpacing: '0.01em', color: '#57584A', lineHeight: 1 })}>Jithu</span>
+            <span style={sx({ fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: 'clamp(11px,0.9vw,17px)', letterSpacing: '0.01em', color: '#57584A', lineHeight: 1 })}>Jithu</span>
           </button>
         </nav>
       </header>
@@ -692,17 +696,24 @@ export default function Showcase({ variant }: Props) {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
-          style={sx({ position: 'relative', flex: '1 1 auto', minHeight: 0, overflow: 'hidden', padding: '6px 0', touchAction: 'pan-y', opacity: laid ? 1 : 0, transition: 'opacity 0.3s ease' })}
+          style={sx({ position: 'relative', flex: '1 1 auto', minHeight: 0, overflow: 'hidden', padding: '6px 0', touchAction: 'pan-y' })}
         >
-          <div ref={trackRef} style={sx({ display: 'flex', gap: 'clamp(8px,1vw,16px)', height: '100%', alignItems: 'stretch', transition: 'none', willChange: 'transform' })}>
+          {/* The initial transform centers the active card in pure CSS, so the server-rendered
+              frame is already correct before the island hydrates (no blank strip on load).
+              JS refines it to exact pixels on the first measure. */}
+          <div
+            ref={trackRef}
+            style={sx({ display: 'flex', gap: 'clamp(8px,1vw,16px)', height: '100%', alignItems: 'stretch', transition: 'none', willChange: 'transform', transform: 'translateX(calc(8.3vw - ' + CLONES + ' * (83.4vw + clamp(8px,1vw,16px))))' })}
+          >
             {LOOP.map((p, li) => {
               const link = productLink(p, isUpwork);
+              const d0 = Math.abs(li - CLONES);
               return (
                 <article
                   key={li}
                   data-id={p.id}
                   aria-label={p.title}
-                  style={sx({ flex: '0 0 auto', width: '83.4vw', height: '100%', position: 'relative', background: '#FBF9F2', borderRadius: 'clamp(24px,2.4vw,40px)', boxShadow: '0 30px 62px -32px rgba(60,50,25,0.42), 0 3px 8px rgba(60,50,25,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', willChange: 'transform,opacity', transition: 'transform 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.55s ease, box-shadow 0.4s ease' })}
+                  style={sx({ flex: '0 0 auto', width: '83.4vw', height: '100%', position: 'relative', background: '#FBF9F2', borderRadius: 'clamp(24px,2.4vw,40px)', boxShadow: '0 30px 62px -32px rgba(60,50,25,0.42), 0 3px 8px rgba(60,50,25,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', willChange: 'transform,opacity', transition: 'transform 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.55s ease, box-shadow 0.4s ease', transform: d0 === 0 ? 'scale(1)' : 'scale(0.965)', opacity: d0 === 0 ? 1 : Math.max(0.22, 0.38 - (d0 - 1) * 0.12) })}
                 >
                   <div style={cardBodyStyle}>
                     <div style={cardInfoColStyle}>
@@ -759,21 +770,26 @@ export default function Showcase({ variant }: Props) {
                         >
                           <PlaceholderShot label={p.screens[0]} i={0} />
                           <span aria-hidden="true" style={sx({ position: 'absolute', top: '10px', right: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(32,33,27,0.55)', color: '#F1F7F0', fontSize: '15px', backdropFilter: 'blur(3px)' })}>⤢</span>
+                          {isMobile && (
+                            <span aria-hidden="true" style={sx({ position: 'absolute', bottom: '10px', left: '10px', fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.05em', color: '#F1F7F0', background: 'rgba(32,33,27,0.55)', padding: '4px 8px', borderRadius: '7px', backdropFilter: 'blur(3px)' })}>{p.screens.length} shots</span>
+                          )}
                         </button>
                       </div>
-                      <div onPointerDown={(e) => e.stopPropagation()} style={sx({ flex: 'none', display: 'flex', gap: '8px', alignItems: 'center' })}>
-                        {p.screens.map((label, ti) => (
-                          <button
-                            key={ti}
-                            onClick={() => openLightbox(p.id, ti)}
-                            aria-label={'View ' + label}
-                            style={sx({ flex: 'none', width: 'clamp(46px,5vw,74px)', aspectRatio: '16 / 9', padding: 0, borderRadius: '8px', border: '1px solid #D8E0CE', background: '#FFFFFF', cursor: 'pointer', overflow: 'hidden' })}
-                          >
-                            <MiniShot i={ti} />
-                          </button>
-                        ))}
-                        <span style={sx({ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 'clamp(9px,0.62vw,12px)', color: '#A7A492', whiteSpace: 'nowrap' })}>{p.screens.length} shots · tap to enlarge</span>
-                      </div>
+                      {!isMobile && (
+                        <div onPointerDown={(e) => e.stopPropagation()} style={sx({ flex: 'none', display: 'flex', gap: '8px', alignItems: 'center' })}>
+                          {p.screens.map((label, ti) => (
+                            <button
+                              key={ti}
+                              onClick={() => openLightbox(p.id, ti)}
+                              aria-label={'View ' + label}
+                              style={sx({ flex: 'none', width: 'clamp(46px,5vw,74px)', aspectRatio: '16 / 9', padding: 0, borderRadius: '8px', border: '1px solid #D8E0CE', background: '#FFFFFF', cursor: 'pointer', overflow: 'hidden' })}
+                            >
+                              <MiniShot i={ti} />
+                            </button>
+                          ))}
+                          <span style={sx({ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 'clamp(9px,0.62vw,12px)', color: '#A7A492', whiteSpace: 'nowrap' })}>{p.screens.length} shots · tap to enlarge</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </article>
@@ -876,6 +892,16 @@ function ProjectOverlay({
     ? sx({ flex: '1 0 auto', padding: '22px 20px calc(22px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column' })
     : sx({ flex: '1 1 340px', minWidth: '290px', minHeight: 0, padding: 'clamp(22px,2.4vw,42px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' });
 
+  const gallery = (
+    <div class="scroll-slim" style={galleryStyle}>
+      {p.screens.map((label, i) => (
+        <button key={i} onClick={() => onOpenLightbox(p.id, i)} aria-label={'Enlarge ' + label} style={{ ...galleryItem, cursor: 'zoom-in', border: 'none', padding: 0 }}>
+          <PlaceholderShot label={label} i={i} />
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div ref={panelRef} role="dialog" aria-modal="true" aria-label={p.title} class={isMobile ? 'scroll-slim' : undefined} style={shellStyle}>
       {isMobile ? (
@@ -886,13 +912,9 @@ function ProjectOverlay({
         <button ref={closeBtnRef} onClick={onClose} aria-label="Close" style={sx({ position: 'absolute', top: '15px', right: '15px', zIndex: 9, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4DFCF', background: 'rgba(251,249,242,0.9)', backdropFilter: 'blur(6px)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', color: '#57584A' })}>&#10005;</button>
       )}
 
-      <div class="scroll-slim" style={galleryStyle}>
-        {p.screens.map((label, i) => (
-          <button key={i} onClick={() => onOpenLightbox(p.id, i)} aria-label={'Enlarge ' + label} style={{ ...galleryItem, cursor: 'zoom-in', border: 'none', padding: 0 }}>
-            <PlaceholderShot label={label} i={i} />
-          </button>
-        ))}
-      </div>
+      {/* Mobile keeps media-above-text; desktop puts text left / images right, matching
+          the project card, so the overlay reads as the card expanded in place. */}
+      {isMobile && gallery}
 
       <div style={detailStyle}>
         <div style={sx({ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '14px', flexWrap: 'wrap' })}>
@@ -907,6 +929,9 @@ function ProjectOverlay({
           <button onClick={() => setTab('tech')} style={tabBtn(!over)}>Under the hood</button>
         </div>
 
+        {/* On desktop the tab content scrolls if the panel runs short, so the role/period row
+            and the CTA below it are never clipped off the bottom. */}
+        <div class={isMobile ? undefined : 'scroll-slim'} style={isMobile ? undefined : sx({ flex: '1 1 auto', minHeight: 0, overflowY: 'auto' })}>
         {over ? (
           <>
             <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: '16px', lineHeight: 1.6, color: '#3C3D34', margin: '0 0 16px' })}>{p.overview}</p>
@@ -929,6 +954,7 @@ function ProjectOverlay({
             </div>
           </>
         )}
+        </div>
 
         <div style={sx({ display: 'flex', flexWrap: 'wrap', gap: '22px', padding: '16px 0', borderTop: '1px solid #EBE5D5', marginTop: 'auto' })}>
           <div>
@@ -950,6 +976,8 @@ function ProjectOverlay({
           </div>
         )}
       </div>
+
+      {!isMobile && gallery}
     </div>
   );
 }
