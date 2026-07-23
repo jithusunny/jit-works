@@ -833,7 +833,7 @@ function ProjectOverlay({
     : sx({ flex: '1 1 340px', minWidth: '290px', minHeight: 0, padding: 'clamp(22px,2.4vw,42px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' });
 
   return (
-    <div ref={panelRef} role="dialog" aria-modal="true" aria-label={p.title} style={shellStyle}>
+    <div ref={panelRef} role="dialog" aria-modal="true" aria-label={p.title} class={isMobile ? 'scroll-slim' : undefined} style={shellStyle}>
       {isMobile ? (
         <button ref={closeBtnRef} onClick={onClose} aria-label="Back" style={sx({ position: 'absolute', top: '14px', left: '14px', zIndex: 9, display: 'inline-flex', alignItems: 'center', gap: '6px', height: '40px', padding: '0 15px 0 11px', borderRadius: '20px', border: 'none', background: 'rgba(251,249,242,0.92)', backdropFilter: 'blur(8px)', boxShadow: '0 6px 16px -8px rgba(30,22,12,0.4)', cursor: 'pointer', fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: '14.5px', color: '#2E5E43' })}>
           <span style={sx({ fontSize: '19px', lineHeight: 1, marginTop: '-1px' })}>&lsaquo;</span>Back
@@ -842,7 +842,7 @@ function ProjectOverlay({
         <button ref={closeBtnRef} onClick={onClose} aria-label="Close" style={sx({ position: 'absolute', top: '15px', right: '15px', zIndex: 9, width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4DFCF', background: 'rgba(251,249,242,0.9)', backdropFilter: 'blur(6px)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', color: '#57584A' })}>&#10005;</button>
       )}
 
-      <div style={galleryStyle}>
+      <div class="scroll-slim" style={galleryStyle}>
         {p.screens.map((label, i) => (
           <button key={i} onClick={() => onOpenLightbox(p.id, i)} aria-label={'Enlarge ' + label} style={{ ...galleryItem, cursor: 'zoom-in', border: 'none', padding: 0 }}>
             <PlaceholderShot label={label} i={i} />
