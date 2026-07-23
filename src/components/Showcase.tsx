@@ -27,7 +27,7 @@ const TRACK_TRANS = 'transform 0.6s cubic-bezier(0.4,0,0.2,1)';
  * The `vw` term shrinks the hero as the window narrows (cards rise gradually); the `86dvh`
  * cap keeps the full-bleed hero on wide screens as the design intends.
  */
-const HERO_H = 'clamp(300px, calc(10dvh + 60vw), 86dvh)';
+const HERO_H = 'clamp(300px, calc(10dvh + 60vw), 78dvh)';
 const pad = (x: number) => String(x).padStart(2, '0');
 const real = (vi: number) => (((vi - 1) % N) + N) % N;
 
