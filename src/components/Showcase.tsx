@@ -677,7 +677,7 @@ export default function Showcase({ variant }: Props) {
                           </p>
                         )}
                       </div>
-                      <div style={sx({ display: 'flex', alignItems: 'center', gap: 'clamp(10px,1vw,16px)', flexWrap: 'wrap' })}>
+                      <div onPointerDown={(e) => e.stopPropagation()} style={sx({ display: 'flex', alignItems: 'center', gap: 'clamp(10px,1vw,16px)', flexWrap: 'wrap' })}>
                         {link ? (
                           <a
                             href={link}
