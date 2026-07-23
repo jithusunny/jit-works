@@ -95,6 +95,101 @@ function PlaceholderShot({ label, i }: { label: string; i: number }) {
   );
 }
 
+/** A tiny, distinct thumbnail motif per media index — a stand-in until real screenshots land. */
+function MiniShot({ i }: { i: number }) {
+  return (
+    <div style={sx({ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '3px', padding: '6px', background: 'linear-gradient(150deg,#F3F7EE,#E9F1E3)' })}>
+      {i === 0 && (
+        <>
+          <span style={sx({ height: '5px', borderRadius: '3px', background: '#B6CCA6' })} />
+          <span style={sx({ height: '5px', width: '70%', borderRadius: '3px', background: '#CFDCC3' })} />
+          <span style={sx({ height: '5px', width: '85%', borderRadius: '3px', background: '#CFDCC3' })} />
+        </>
+      )}
+      {i === 1 && (
+        <div style={sx({ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '100%' })}>
+          <span style={sx({ flex: 1, height: '45%', background: '#CFDCC3', borderRadius: '2px' })} />
+          <span style={sx({ flex: 1, height: '80%', background: '#3E7A5B', borderRadius: '2px' })} />
+          <span style={sx({ flex: 1, height: '60%', background: '#CFDCC3', borderRadius: '2px' })} />
+          <span style={sx({ flex: 1, height: '95%', background: '#B6CCA6', borderRadius: '2px' })} />
+        </div>
+      )}
+      {i === 2 && (
+        <div style={sx({ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' })}>
+          <span style={sx({ width: '46%', aspectRatio: '1', borderRadius: '6px', background: 'linear-gradient(150deg,#3E7A5B,#2E5E43)' })} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Full-screen media viewer: ← → / swipe between a project's shots, Esc / × / backdrop to close. */
+function Lightbox({
+  project, index, onClose, onStep,
+}: {
+  project: Project;
+  index: number;
+  onClose: () => void;
+  onStep: (d: number) => void;
+}) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const drag = useRef<{ x: number; on: boolean }>({ x: 0, on: false });
+  const total = project.screens.length;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); onStep(1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); onStep(-1); }
+    };
+    document.addEventListener('keydown', onKey);
+    const t = setTimeout(() => { try { closeRef.current?.focus(); } catch {} }, 30);
+    return () => { document.removeEventListener('keydown', onKey); clearTimeout(t); };
+  }, [onClose, onStep]);
+
+  const arrow = (side: 'left' | 'right'): JSX.CSSProperties => sx({
+    position: 'absolute', [side]: 'clamp(8px,2vw,28px)', top: '50%', transform: 'translateY(-50%)', zIndex: 2,
+    width: '52px', height: '52px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(28,26,20,0.55)', backdropFilter: 'blur(6px)', color: '#F1F7F0', fontSize: '26px', lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: '3px',
+  });
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={project.title + ' media'}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onPointerDown={(e) => { drag.current = { x: e.clientX, on: true }; }}
+      onPointerUp={(e) => {
+        if (!drag.current.on) return;
+        drag.current.on = false;
+        const dx = e.clientX - drag.current.x;
+        if (dx <= -50) onStep(1);
+        else if (dx >= 50) onStep(-1);
+      }}
+      style={sx({ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(18,17,13,0.86)', backdropFilter: 'blur(6px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px,5vw,64px)', animation: 'fadeIn 0.2s ease', touchAction: 'pan-y' })}
+    >
+      <button ref={closeRef} onClick={onClose} aria-label="Close" style={sx({ position: 'absolute', top: 'clamp(12px,2vw,24px)', right: 'clamp(12px,2vw,24px)', zIndex: 2, width: '44px', height: '44px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(28,26,20,0.55)', backdropFilter: 'blur(6px)', color: '#F1F7F0', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' })}>&#10005;</button>
+
+      {total > 1 && (
+        <>
+          <button onClick={() => onStep(-1)} aria-label="Previous image" style={arrow('left')}>&lsaquo;</button>
+          <button onClick={() => onStep(1)} aria-label="Next image" style={arrow('right')}>&rsaquo;</button>
+        </>
+      )}
+
+      <figure style={sx({ margin: 0, width: 'min(96vw, calc(82vh * 16 / 9))', maxWidth: '1400px', display: 'flex', flexDirection: 'column', gap: '14px' })}>
+        <div style={sx({ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: '#FFFFFF', borderRadius: 'clamp(10px,1.2vw,16px)', boxShadow: '0 40px 90px -30px rgba(0,0,0,0.6)', overflow: 'hidden' })}>
+          <PlaceholderShot label={project.screens[index]} i={index} />
+        </div>
+        <figcaption style={sx({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', fontFamily: 'var(--font-mono)', fontSize: '12.5px', letterSpacing: '0.04em', color: 'rgba(241,247,240,0.82)' })}>
+          <span>{project.title} · {project.screens[index]}</span>
+          <span>{index + 1} / {total}</span>
+        </figcaption>
+      </figure>
+    </div>
+  );
+}
+
 export default function Showcase({ variant }: Props) {
   const isUpwork = variant === 'upwork';
 
@@ -105,6 +200,7 @@ export default function Showcase({ variant }: Props) {
   const [tab, setTab] = useState<'overview' | 'tech'>('overview');
   const [isMobile, setIsMobile] = useState(false);
   const [isShort, setIsShort] = useState(false);
+  const [lightbox, setLightbox] = useState<{ id: string; i: number } | null>(null);
 
   const trackRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -131,10 +227,11 @@ export default function Showcase({ variant }: Props) {
     snapT: 0 as ReturnType<typeof setTimeout> | 0,
     fillT: 0,
     prevFocus: null as Element | null,
+    prevFocusLB: null as Element | null,
   });
   // Live mirror of reactive state read inside the rAF loop.
-  const sync = useRef({ playing: true, hasOverlay: false, index: 1 });
-  sync.current = { playing, hasOverlay: overlay != null, index };
+  const sync = useRef({ playing: true, hasOverlay: false, index: 1, lightbox: false });
+  sync.current = { playing, hasOverlay: overlay != null || lightbox != null, index, lightbox: lightbox != null };
 
   // Slide animation stays off until the initial layout settles, so early re-measures
   // reposition instantly instead of animating a visible jump.
@@ -269,6 +366,22 @@ export default function Showcase({ variant }: Props) {
     const pf = m.current.prevFocus as HTMLElement | null;
     if (pf && pf.focus) setTimeout(() => { try { pf.focus(); } catch {} }, 0);
   }
+  function openLightbox(id: string, i: number) {
+    m.current.prevFocusLB = document.activeElement;
+    setLightbox({ id, i });
+  }
+  function closeLightbox() {
+    setLightbox(null);
+    const pf = m.current.prevFocusLB as HTMLElement | null;
+    if (pf && pf.focus) setTimeout(() => { try { pf.focus(); } catch {} }, 0);
+  }
+  function stepLightbox(d: number) {
+    setLightbox((lb) => {
+      if (!lb) return lb;
+      const total = projects.find((p) => p.id === lb.id)?.screens.length ?? 1;
+      return { id: lb.id, i: (lb.i + d + total) % total };
+    });
+  }
 
   // Pointer drag
   function onPointerDown(e: PointerEvent) {
@@ -336,6 +449,7 @@ export default function Showcase({ variant }: Props) {
     window.addEventListener('load', onResize);
 
     const onKey = (e: KeyboardEvent) => {
+      if (sync.current.lightbox) return; // the Lightbox handles its own Esc / arrows
       if (e.key === 'Escape' && sync.current.hasOverlay) {
         closeOverlay();
         return;
@@ -541,12 +655,8 @@ export default function Showcase({ variant }: Props) {
                 <article
                   key={li}
                   data-id={p.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={'Open ' + p.title}
-                  onClick={() => openProject(p.id)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProject(p.id); } }}
-                  style={sx({ flex: '0 0 auto', width: '83.4vw', height: '100%', cursor: 'pointer', position: 'relative', background: '#FBF9F2', borderRadius: 'clamp(24px,2.4vw,40px)', boxShadow: '0 30px 62px -32px rgba(60,50,25,0.42), 0 3px 8px rgba(60,50,25,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', willChange: 'transform,opacity', transition: 'transform 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.55s ease, box-shadow 0.4s ease' })}
+                  aria-label={p.title}
+                  style={sx({ flex: '0 0 auto', width: '83.4vw', height: '100%', position: 'relative', background: '#FBF9F2', borderRadius: 'clamp(24px,2.4vw,40px)', boxShadow: '0 30px 62px -32px rgba(60,50,25,0.42), 0 3px 8px rgba(60,50,25,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', willChange: 'transform,opacity', transition: 'transform 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.55s ease, box-shadow 0.4s ease' })}
                 >
                   <div style={cardBodyStyle}>
                     <div style={cardInfoColStyle}>
@@ -567,35 +677,56 @@ export default function Showcase({ variant }: Props) {
                           </p>
                         )}
                       </div>
-                      <div style={sx({ display: 'flex', alignItems: 'center', gap: 'clamp(12px,1vw,20px)' })}>
+                      <div style={sx({ display: 'flex', alignItems: 'center', gap: 'clamp(10px,1vw,16px)', flexWrap: 'wrap' })}>
                         {link ? (
                           <a
                             href={link}
                             target="_blank"
                             rel="noopener"
-                            onClick={(e) => e.stopPropagation()}
-                            style={sx({ display: 'inline-flex', alignItems: 'center', gap: '9px', background: '#2E5E43', color: '#F1F7F0', padding: 'clamp(12px,0.9vw,19px) clamp(26px,1.9vw,42px)', borderRadius: '14px', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 'clamp(15px,1.15vw,23px)', whiteSpace: 'nowrap', boxShadow: '0 10px 22px -10px rgba(46,94,67,0.7)' })}
+                            style={sx({ display: 'inline-flex', alignItems: 'center', gap: '9px', background: '#2E5E43', color: '#F1F7F0', padding: 'clamp(12px,0.9vw,19px) clamp(24px,1.8vw,40px)', borderRadius: '14px', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 'clamp(15px,1.1vw,22px)', whiteSpace: 'nowrap', boxShadow: '0 10px 22px -10px rgba(46,94,67,0.7)' })}
                           >
                             {p.ctaLabel || 'Open'} ↗
                           </a>
                         ) : (
-                          <span style={sx({ fontFamily: 'var(--font-mono)', fontSize: 'clamp(11px,0.72vw,14px)', letterSpacing: '0.05em', textTransform: 'uppercase', color: '#8B8977', background: '#F1EEE1', border: '1px solid #E4DFCF', padding: '8px 14px', borderRadius: '10px' })}>
+                          <span style={sx({ display: 'inline-flex', alignItems: 'center', gap: '7px', fontFamily: 'var(--font-mono)', fontSize: 'clamp(11px,0.72vw,14px)', letterSpacing: '0.05em', textTransform: 'uppercase', color: '#8B8977', background: '#F1EEE1', border: '1px solid #E4DFCF', padding: 'clamp(9px,0.75vw,13px) 15px', borderRadius: '12px', whiteSpace: 'nowrap' })}>
                             {p.href ? 'Live product' : 'Private preview'}
                           </span>
                         )}
-                        <span style={sx({ fontFamily: 'var(--font-mono)', fontSize: 'clamp(10px,0.68vw,13px)', color: '#A7A492', letterSpacing: '0.02em' })}>click for the story</span>
+                        <button
+                          onClick={() => openProject(p.id)}
+                          style={sx({ display: 'inline-flex', alignItems: 'center', gap: '7px', background: 'transparent', color: '#2E5E43', padding: 'clamp(11px,0.85vw,17px) clamp(18px,1.4vw,28px)', borderRadius: '14px', border: '1px solid #CBD8C2', cursor: 'pointer', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 'clamp(14px,1.05vw,20px)', whiteSpace: 'nowrap' })}
+                        >
+                          The story →
+                        </button>
                       </div>
                     </div>
 
                     <div style={cardMediaColStyle}>
                       <div
-                        onClick={(e) => e.stopPropagation()}
                         onPointerDown={(e) => e.stopPropagation()}
                         style={sx({ flex: '1 1 auto', minHeight: 0, display: 'flex', position: 'relative', containerType: 'size' })}
                       >
-                        <div style={sx({ position: 'relative', width: 'min(100%, calc(100cqh * 16 / 9))', aspectRatio: '16 / 9', margin: 'auto', background: '#FFFFFF', borderRadius: '12px', boxShadow: '0 24px 48px -26px rgba(30,60,40,0.55)', overflow: 'hidden' })}>
+                        <button
+                          onClick={() => openLightbox(p.id, 0)}
+                          aria-label={'Open ' + p.title + ' gallery'}
+                          style={sx({ position: 'relative', width: 'min(100%, calc(100cqh * 16 / 9))', aspectRatio: '16 / 9', margin: 'auto', padding: 0, border: 'none', background: '#FFFFFF', borderRadius: '12px', boxShadow: '0 24px 48px -26px rgba(30,60,40,0.55)', overflow: 'hidden', cursor: 'zoom-in', display: 'block' })}
+                        >
                           <PlaceholderShot label={p.screens[0]} i={0} />
-                        </div>
+                          <span aria-hidden="true" style={sx({ position: 'absolute', top: '10px', right: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(32,33,27,0.55)', color: '#F1F7F0', fontSize: '15px', backdropFilter: 'blur(3px)' })}>⤢</span>
+                        </button>
+                      </div>
+                      <div onPointerDown={(e) => e.stopPropagation()} style={sx({ flex: 'none', display: 'flex', gap: '8px', alignItems: 'center' })}>
+                        {p.screens.map((label, ti) => (
+                          <button
+                            key={ti}
+                            onClick={() => openLightbox(p.id, ti)}
+                            aria-label={'View ' + label}
+                            style={sx({ flex: 'none', width: 'clamp(46px,5vw,74px)', aspectRatio: '16 / 9', padding: 0, borderRadius: '8px', border: '1px solid #D8E0CE', background: '#FFFFFF', cursor: 'pointer', overflow: 'hidden' })}
+                          >
+                            <MiniShot i={ti} />
+                          </button>
+                        ))}
+                        <span style={sx({ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 'clamp(9px,0.62vw,12px)', color: '#A7A492', whiteSpace: 'nowrap' })}>{p.screens.length} shots · tap to enlarge</span>
                       </div>
                     </div>
                   </div>
@@ -644,12 +775,22 @@ export default function Showcase({ variant }: Props) {
               panelRef={panelRef}
               closeBtnRef={closeBtnRef}
               onClose={closeOverlay}
+              onOpenLightbox={openLightbox}
             />
           )}
           {overlay === 'about' && (
             <AboutOverlay panelRef={panelRef} closeBtnRef={closeBtnRef} onClose={closeOverlay} primaryLabel={primaryLabel} />
           )}
         </div>
+      )}
+
+      {lightbox && (
+        <Lightbox
+          project={projects.find((p) => p.id === lightbox.id) || projects[0]}
+          index={lightbox.i}
+          onClose={closeLightbox}
+          onStep={stepLightbox}
+        />
       )}
     </div>
   );
@@ -660,7 +801,7 @@ export default function Showcase({ variant }: Props) {
 // ---------------------------------------------------------------------------
 
 function ProjectOverlay({
-  p, isMobile, isUpwork, tab, setTab, panelRef, closeBtnRef, onClose,
+  p, isMobile, isUpwork, tab, setTab, panelRef, closeBtnRef, onClose, onOpenLightbox,
 }: {
   p: Project;
   isMobile: boolean;
@@ -670,6 +811,7 @@ function ProjectOverlay({
   panelRef: preact.RefObject<HTMLDivElement>;
   closeBtnRef: preact.RefObject<HTMLButtonElement>;
   onClose: () => void;
+  onOpenLightbox: (id: string, i: number) => void;
 }) {
   const over = tab === 'overview';
   const link = productLink(p, isUpwork);
@@ -700,9 +842,9 @@ function ProjectOverlay({
 
       <div style={galleryStyle}>
         {p.screens.map((label, i) => (
-          <div key={i} style={galleryItem}>
+          <button key={i} onClick={() => onOpenLightbox(p.id, i)} aria-label={'Enlarge ' + label} style={{ ...galleryItem, cursor: 'zoom-in', border: 'none', padding: 0 }}>
             <PlaceholderShot label={label} i={i} />
-          </div>
+          </button>
         ))}
       </div>
 
