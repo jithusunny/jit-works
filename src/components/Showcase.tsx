@@ -105,7 +105,6 @@ export default function Showcase({ variant }: Props) {
   const [tab, setTab] = useState<'overview' | 'tech'>('overview');
   const [isMobile, setIsMobile] = useState(false);
   const [isShort, setIsShort] = useState(false);
-  const [mediaSel, setMediaSel] = useState<Record<string, number>>({});
 
   const trackRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -461,12 +460,7 @@ export default function Showcase({ variant }: Props) {
     : sx({ flex: '1 1 0', minWidth: '280px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 'clamp(8px,1.8vh,22px)', padding: 'clamp(4px,0.5vw,10px) 0', overflow: 'hidden' });
   const cardMediaColStyle = isMobile
     ? sx({ flex: '1 1 auto', minHeight: '150px', display: 'flex', flexDirection: 'column', gap: '8px', borderRadius: '16px', overflow: 'hidden', background: 'radial-gradient(120% 130% at 78% 12%, #EAF1E3 0%, #E3EBDC 55%, #DEE7D6 100%)', padding: '10px' })
-    : sx({ flex: '1.45 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'clamp(8px,0.9vw,12px)', borderRadius: 'clamp(16px,1.8vw,28px)', overflow: 'hidden', background: 'radial-gradient(120% 130% at 78% 12%, #EAF1E3 0%, #E3EBDC 55%, #DEE7D6 100%)', padding: 'clamp(10px,1.2vw,18px)' });
-
-  const tabChip = (on: boolean): JSX.CSSProperties => sx({
-    fontFamily: 'var(--font-mono)', fontSize: 'clamp(10.5px,0.75vw,13.5px)', letterSpacing: '0.05em', textTransform: 'uppercase', borderRadius: '8px', padding: '7px 13px', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s ease',
-    background: on ? '#2E5E43' : '#FBF9F2', color: on ? '#F1F7F0' : '#57584A', border: on ? '1px solid #2E5E43' : '1px solid #E4DFCF',
-  });
+    : sx({ flex: '1.7 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'clamp(8px,0.9vw,12px)', borderRadius: 'clamp(16px,1.8vw,28px)', overflow: 'hidden', background: 'radial-gradient(120% 130% at 78% 12%, #EAF1E3 0%, #E3EBDC 55%, #DEE7D6 100%)', padding: 'clamp(10px,1.2vw,18px)' });
 
   return (
     <div style={pageStyle}>
@@ -542,7 +536,6 @@ export default function Showcase({ variant }: Props) {
         >
           <div ref={trackRef} style={sx({ display: 'flex', gap: 'clamp(8px,1vw,16px)', height: '100%', alignItems: 'stretch', transition: 'none', willChange: 'transform' })}>
             {LOOP.map((p, li) => {
-              const cur = mediaSel[p.id] || 0;
               const link = productLink(p, isUpwork);
               return (
                 <article
@@ -564,37 +557,16 @@ export default function Showcase({ variant }: Props) {
                         </span>
                         <span aria-hidden="true" style={sx({ marginLeft: 'auto', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'clamp(18px,1.4vw,28px)', lineHeight: 1, letterSpacing: '-0.02em', color: 'rgba(62,122,91,0.22)' })}>{p.no}</span>
                       </div>
-                      <div style={sx({ display: 'flex', flexDirection: 'column', gap: 'clamp(6px,0.7vw,12px)' })}>
-                        <h2 style={sx({ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(27px,2.9vw,58px)', lineHeight: 0.98, letterSpacing: '-0.03em', margin: 0, color: '#23241E' })}>{p.title}</h2>
-                        <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: 'clamp(15px,1.15vw,24px)', lineHeight: 1.4, color: '#57584A', margin: 0, maxWidth: '40ch', textWrap: 'pretty' })}>{p.tagline}</p>
+                      <div style={sx({ display: 'flex', flexDirection: 'column', gap: 'clamp(8px,1vw,16px)' })}>
+                        <h2 style={sx({ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(28px,3vw,60px)', lineHeight: 0.98, letterSpacing: '-0.03em', margin: 0, color: '#23241E' })}>{p.title}</h2>
+                        <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: 'clamp(15px,1.25vw,26px)', lineHeight: 1.35, color: '#3C3D34', margin: 0, maxWidth: '30ch', textWrap: 'pretty' })}>{p.tagline}</p>
+                        {showExtras && (
+                          <p style={sx({ display: 'flex', gap: '9px', alignItems: 'flex-start', fontFamily: 'var(--font-ui)', fontSize: 'clamp(13px,0.92vw,17px)', lineHeight: 1.5, color: '#57584A', margin: 0, maxWidth: '40ch' })}>
+                            <span style={sx({ flex: 'none', width: '8px', height: '8px', borderRadius: '2px', background: '#C9F24E', marginTop: 'clamp(5px,0.4vw,7px)' })} />
+                            <span>{p.hardPart}</span>
+                          </p>
+                        )}
                       </div>
-                      {showExtras && (
-                        <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: 'clamp(14px,0.95vw,20px)', lineHeight: 1.55, color: '#3C3D34', margin: 0, maxWidth: '48ch', textWrap: 'pretty' })}>{p.blurb}</p>
-                      )}
-                      <div style={sx({ display: 'flex', flexDirection: 'column', gap: 'clamp(7px,0.75vw,12px)' })}>
-                        {p.features.map((f, fi) => (
-                          <div key={fi} style={sx({ display: 'flex', gap: '10px', alignItems: 'flex-start' })}>
-                            <span style={sx({ flex: 'none', width: '9px', height: '9px', borderRadius: '3px', background: '#C9F24E', marginTop: 'clamp(5px,0.4vw,8px)' })} />
-                            <span style={sx({ fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: 'clamp(13.5px,0.9vw,19px)', lineHeight: 1.4, color: '#2E4A3A' })}>{f}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={sx({ display: 'flex', alignItems: 'flex-end', gap: 'clamp(20px,2.1vw,44px)' })}>
-                        {p.stats.map((st, si) => (
-                          <div key={si} style={sx({ display: 'flex', flexDirection: 'column', gap: '4px' })}>
-                            <span style={sx({ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'clamp(20px,1.6vw,34px)', lineHeight: 1, letterSpacing: '-0.02em', color: '#23241E' })}>{st.v}</span>
-                            <span style={sx({ fontFamily: 'var(--font-mono)', fontSize: 'clamp(9.5px,0.62vw,13px)', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8B8977' })}>{st.l}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {showExtras && (
-                        <div style={sx({ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' })}>
-                          <span style={sx({ fontFamily: 'var(--font-mono)', fontSize: 'clamp(10px,0.65vw,13px)', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B8977' })}>{p.role} &middot; {p.period}</span>
-                          {p.stack.map((t, ti) => (
-                            <span key={ti} style={sx({ fontFamily: 'var(--font-mono)', fontSize: 'clamp(10px,0.68vw,13px)', color: '#57584A', background: '#F1EEE1', border: '1px solid #E4DFCF', padding: '4px 10px', borderRadius: '7px' })}>{t}</span>
-                          ))}
-                        </div>
-                      )}
                       <div style={sx({ display: 'flex', alignItems: 'center', gap: 'clamp(12px,1vw,20px)' })}>
                         {link ? (
                           <a
@@ -604,7 +576,7 @@ export default function Showcase({ variant }: Props) {
                             onClick={(e) => e.stopPropagation()}
                             style={sx({ display: 'inline-flex', alignItems: 'center', gap: '9px', background: '#2E5E43', color: '#F1F7F0', padding: 'clamp(12px,0.9vw,19px) clamp(26px,1.9vw,42px)', borderRadius: '14px', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 'clamp(15px,1.15vw,23px)', whiteSpace: 'nowrap', boxShadow: '0 10px 22px -10px rgba(46,94,67,0.7)' })}
                           >
-                            Open &nearr;
+                            {p.ctaLabel || 'Open'} ↗
                           </a>
                         ) : (
                           <span style={sx({ fontFamily: 'var(--font-mono)', fontSize: 'clamp(11px,0.72vw,14px)', letterSpacing: '0.05em', textTransform: 'uppercase', color: '#8B8977', background: '#F1EEE1', border: '1px solid #E4DFCF', padding: '8px 14px', borderRadius: '10px' })}>
@@ -622,24 +594,8 @@ export default function Showcase({ variant }: Props) {
                         style={sx({ flex: '1 1 auto', minHeight: 0, display: 'flex', position: 'relative', containerType: 'size' })}
                       >
                         <div style={sx({ position: 'relative', width: 'min(100%, calc(100cqh * 16 / 9))', aspectRatio: '16 / 9', margin: 'auto', background: '#FFFFFF', borderRadius: '12px', boxShadow: '0 24px 48px -26px rgba(30,60,40,0.55)', overflow: 'hidden' })}>
-                          {p.screens.map((label, mi) => (
-                            <div key={mi} style={sx({ position: 'absolute', inset: 0, display: cur === mi ? 'block' : 'none' })}>
-                              <PlaceholderShot label={label} i={mi} />
-                            </div>
-                          ))}
+                          <PlaceholderShot label={p.screens[0]} i={0} />
                         </div>
-                      </div>
-                      <div onPointerDown={(e) => e.stopPropagation()} style={sx({ flex: 'none', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' })}>
-                        {p.screens.map((label, mi) => (
-                          <button
-                            key={mi}
-                            onClick={(e) => { e.stopPropagation(); setMediaSel((s) => ({ ...s, [p.id]: mi })); }}
-                            style={tabChip(cur === mi)}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                        <span style={sx({ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 'clamp(9px,0.62vw,12px)', color: '#A7A492' })}>media &middot; tap to switch</span>
                       </div>
                     </div>
                   </div>
@@ -764,7 +720,17 @@ function ProjectOverlay({
         </div>
 
         {over ? (
-          <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: '16px', lineHeight: 1.6, color: '#3C3D34', margin: '0 0 20px' })}>{p.overview}</p>
+          <>
+            <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: '16px', lineHeight: 1.6, color: '#3C3D34', margin: '0 0 16px' })}>{p.overview}</p>
+            <div style={sx({ display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '20px' })}>
+              {p.features.map((f, i) => (
+                <div key={i} style={sx({ display: 'flex', gap: '10px', alignItems: 'flex-start' })}>
+                  <span style={sx({ flex: 'none', width: '8px', height: '8px', borderRadius: '2px', background: '#C9F24E', marginTop: '7px' })} />
+                  <span style={sx({ fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: '14.5px', lineHeight: 1.4, color: '#2E4A3A' })}>{f}</span>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <>
             <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: '16px', lineHeight: 1.6, color: '#3C3D34', margin: '0 0 18px' })}>{p.tech}</p>
@@ -788,7 +754,7 @@ function ProjectOverlay({
         </div>
         {link ? (
           <a href={link} target="_blank" rel="noopener" style={sx({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#2E5E43', color: '#F1F7F0', padding: '13px 20px', borderRadius: '12px', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: '15px', boxShadow: '0 10px 22px -10px rgba(46,94,67,0.7)', marginTop: '6px' })}>
-            Visit {p.title} &nearr;
+            {p.ctaLabel || 'Visit'} ↗
           </a>
         ) : (
           <div style={sx({ fontFamily: 'var(--font-ui)', fontSize: '14px', color: '#8B8977', background: '#F3F0E6', border: '1px solid #E4DFCF', borderRadius: '12px', padding: '13px 16px', marginTop: '6px', lineHeight: 1.45 })}>
@@ -818,7 +784,7 @@ function AboutOverlay({
       <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: '17px', lineHeight: 1.6, color: '#3C3D34', margin: '0 0 16px' })}>I build software, systems, and experiments around ideas that genuinely excite me &mdash; from local-first personal tools to real-time multiplayer games and AI-moderated chat.</p>
       <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: '17px', lineHeight: 1.6, color: '#57584A', margin: '0 0 24px' })}>This site is a small, honest map of that work. If something here fits what you&rsquo;re building, the best next step is a message on Upwork.</p>
       <a href={UPWORK_URL} target="_blank" rel="noopener" style={sx({ display: 'inline-flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: '15px', color: '#F1F7F0', background: '#2E5E43', padding: '12px 18px', borderRadius: '12px', boxShadow: '0 10px 22px -10px rgba(46,94,67,0.7)' })}>
-        <span style={sx({ width: '11px', height: '11px', borderRadius: '50%', background: '#C9F24E' })} />{primaryLabel} &nearr;
+        <span style={sx({ width: '11px', height: '11px', borderRadius: '50%', background: '#C9F24E' })} />{primaryLabel} ↗
       </a>
     </div>
   );

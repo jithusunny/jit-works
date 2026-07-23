@@ -1,21 +1,16 @@
 // Single source of truth for the four selected projects (issue #3).
 // Reused verbatim by both the main page and the /upwork surface.
 //
-// COPY & LINKS are public-safe and subject to owner approval before the deploy slice.
-// STATS are illustrative capability descriptors, not audience/usage claims — replace or
-// confirm with the owner before shipping.
+// The card is a glance surface: it carries a hook (problem + twist), one plain-language
+// "hard part", a real screenshot, and one honest action. Depth (the idea, the tech, stack,
+// role, gallery) lives in the detail overlay. COPY & LINKS are public-safe and subject to
+// owner approval before the deploy slice.
+//
 // `upworkLinkable` is the contact-boundary gate for the /upwork surface: a destination is
 // linked there only after the deploy-slice audit confirms it exposes no off-platform contact
 // path. All four start `false` (audit pending); flip per destination once audited.
 
 export type StatusTone = 'live' | 'beta' | 'preview' | 'sketch';
-
-export interface Stat {
-  /** Short value, e.g. "E2EE". */
-  v: string;
-  /** Uppercase label under the value. */
-  l: string;
-}
 
 export interface Project {
   id: string;
@@ -24,8 +19,11 @@ export interface Project {
   category: string;
   status: string;
   statusTone: StatusTone;
+  /** Card hook: the problem with a twist, in one sentence. */
   tagline: string;
-  /** Media-switcher tab labels (stage 1/2/3). */
+  /** Card credibility line: the one clever/hard thing, in plain words. */
+  hardPart: string;
+  /** Media-switcher tab labels used by the overlay gallery (stage 1/2/3). */
   screens: [string, string, string];
   /** "The idea" overview. */
   overview: string;
@@ -36,10 +34,11 @@ export interface Project {
   period: string;
   /** Live destination for the product. Absent for private-preview work (Mobidev). */
   href?: string;
+  /** Action label when the destination is linked (e.g. "Try it live", "Play it now"). */
+  ctaLabel?: string;
   /** May this destination be linked from the Upwork-safe surface? Set by the deploy-slice audit. */
   upworkLinkable: boolean;
-  stats: [Stat, Stat, Stat];
-  blurb: string;
+  /** Concrete capabilities, shown in the detail overlay. */
   features: [string, string, string];
 }
 
@@ -58,8 +57,8 @@ export const projects: Project[] = [
     category: 'Dev tools',
     status: 'Private preview',
     statusTone: 'preview',
-    tagline:
-      'A personal command center for starting, watching, and steering coding-agent sessions from laptop or phone.',
+    tagline: 'Run and steer your AI coding agents from your phone.',
+    hardPart: 'Jump into a live agent session from anywhere — approve or redirect in the moment.',
     screens: ['01 · Sessions', '02 · Live', '03 · Steer'],
     overview:
       "Coding agents do real work, but usually only while you're glued to a terminal. Mobidev turns that into something you can run from anywhere — start a session, watch it think and act in real time, and step in to steer or approve, whether you're at your desk or on your phone.",
@@ -69,13 +68,6 @@ export const projects: Project[] = [
     role: 'Design + build',
     period: '2025 — now',
     upworkLinkable: false,
-    stats: [
-      { v: 'Preview', l: 'status' },
-      { v: 'Laptop + phone', l: 'surfaces' },
-      { v: 'Live', l: 'session stream' },
-    ],
-    blurb:
-      'Run and supervise coding-agent sessions from anywhere — start work at your desk, keep an eye on it from your phone, and jump in when it matters.',
     features: [
       'Start & steer agent sessions remotely',
       'Live session stream, laptop ↔ phone',
@@ -89,8 +81,8 @@ export const projects: Project[] = [
     category: 'Software',
     status: 'Live',
     statusTone: 'live',
-    tagline:
-      'A local-first personal suite that keeps your daily tools private, offline-ready, and end-to-end encrypted.',
+    tagline: 'Your personal tools, fully private — offline and end-to-end encrypted.',
+    hardPart: 'Fully usable with no network; the server never sees your data.',
     screens: ['01 · Today', '02 · Suite', '03 · Sync'],
     overview:
       "Most personal apps put your life on someone else's server. LifeSuite flips that: your notes, tasks, and daily tools live on your device first, work fully offline, and sync end-to-end encrypted — so the data stays yours and still follows you across devices.",
@@ -100,14 +92,8 @@ export const projects: Project[] = [
     role: 'Design + build',
     period: '2024 — now',
     href: 'https://lifesuite-spa.vercel.app',
+    ctaLabel: 'Try it live',
     upworkLinkable: false,
-    stats: [
-      { v: 'Local-first', l: 'data model' },
-      { v: 'Offline', l: 'works fully' },
-      { v: 'E2EE', l: 'sync' },
-    ],
-    blurb:
-      'Your everyday tools, kept private by design — on-device first, usable offline, and end-to-end encrypted when it syncs.',
     features: [
       'On-device first, works fully offline',
       'End-to-end encrypted sync',
@@ -121,7 +107,8 @@ export const projects: Project[] = [
     category: 'AI',
     status: 'Live',
     statusTone: 'live',
-    tagline: 'Anonymous chat with AI moderation that runs before a message is ever delivered.',
+    tagline: 'Anonymous chat that AI cleans up before a message ever lands.',
+    hardPart: 'Screens and masks every message before delivery — and stores nothing.',
     screens: ['01 · Chat', '02 · Shield', '03 · Anon'],
     overview:
       "SafeChat lets people talk anonymously without it turning toxic. Every message passes AI moderation before delivery — masking identifying details and blocking abuse — and nothing is kept afterwards, because there's no message history at all.",
@@ -131,14 +118,8 @@ export const projects: Project[] = [
     role: 'Design + build',
     period: '2025',
     href: 'https://safechat.jithusunnyk.workers.dev',
+    ctaLabel: 'Try it live',
     upworkLinkable: false,
-    stats: [
-      { v: 'Pre-delivery', l: 'moderation' },
-      { v: 'Masked', l: 'identity' },
-      { v: 'None', l: 'stored history' },
-    ],
-    blurb:
-      'Talk anonymously without the toxicity — AI screens and masks every message before it lands, and nothing is stored afterwards.',
     features: [
       'Moderation before delivery, not after',
       'Identifying info masked automatically',
@@ -152,7 +133,8 @@ export const projects: Project[] = [
     category: 'Game',
     status: 'Live',
     statusTone: 'live',
-    tagline: 'A browser-based 3D kart racer with local split-screen and cross-device online play.',
+    tagline: 'A 3D kart racer in a browser tab — split-screen or online.',
+    hardPart: 'Real-time 3D and cross-device multiplayer, with no install.',
     screens: ['01 · Track', '02 · Split', '03 · Online'],
     overview:
       'Rolleo is a proper kart racer that runs in a browser tab — no install, no store. Grab a friend on the couch for local split-screen, or race people on other devices online, all rendered in real-time 3D on the web.',
@@ -162,14 +144,8 @@ export const projects: Project[] = [
     role: 'Design + build',
     period: '2024 — now',
     href: 'https://playrolleo.com',
+    ctaLabel: 'Play it now',
     upworkLinkable: false,
-    stats: [
-      { v: '3D', l: 'in the browser' },
-      { v: 'Split-screen', l: 'local co-op' },
-      { v: 'Cross-device', l: 'online play' },
-    ],
-    blurb:
-      'A no-install 3D kart racer in a browser tab — split-screen on the couch or cross-device online, rendered in real-time 3D.',
     features: [
       'Runs in the browser — no install',
       'Local split-screen multiplayer',
