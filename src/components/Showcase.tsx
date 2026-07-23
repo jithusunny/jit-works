@@ -207,6 +207,9 @@ export default function Showcase({ variant }: Props) {
   const [isMobile, setIsMobile] = useState(false);
   const [isShort, setIsShort] = useState(false);
   const [lightbox, setLightbox] = useState<{ id: string; i: number } | null>(null);
+  // The carousel stays hidden until the track is measured and correctly centered,
+  // so no mis-aligned first frame is ever shown.
+  const [laid, setLaid] = useState(false);
 
   const trackRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -242,24 +245,29 @@ export default function Showcase({ variant }: Props) {
   // Slide animation stays off until the initial layout settles, so early re-measures
   // reposition instantly instead of animating a visible jump.
   const slideReady = useRef(false);
+  const laidRef = useRef(false);
   const trans = () => (slideReady.current ? TRACK_TRANS : 'none');
 
   function baseOffset() {
     return Math.max(0, ((m.current.vpW || 0) - (m.current.cardW || 0)) / 2);
   }
   function measureStep() {
-    const track = trackRef.current;
-    if (!track) return;
-    const cards = track.children;
-    if (cards.length < 2) return;
-    const s = (cards[1] as HTMLElement).offsetLeft - (cards[0] as HTMLElement).offsetLeft;
-    if (s > 0) {
-      m.current.step = s;
-      m.current.cardW = (cards[0] as HTMLElement).offsetWidth;
+    const vp = viewportRef.current;
+    if (!vp) return;
+    const vpW = vp.clientWidth;
+    if (vpW <= 0) return;
+    m.current.vpW = vpW;
+    // Cards are a deterministic 83.4vw wide with a clamp(8px,1vw,16px) gap. Compute the step
+    // from the viewport width instead of reading offsetLeft, which is briefly wrong on load
+    // (the width hasn't been applied to layout yet) and mis-centers the first frame.
+    const winW = typeof window !== 'undefined' && window.innerWidth ? window.innerWidth : vpW;
+    const cardW = 0.834 * winW;
+    const gap = Math.min(16, Math.max(8, 0.01 * winW));
+    if (cardW > 0) {
+      m.current.cardW = cardW;
+      m.current.step = cardW + gap;
       m.current.appliedX = null;
     }
-    const vp = viewportRef.current;
-    if (vp) m.current.vpW = vp.clientWidth;
   }
   function styleCards(activeIdx: number) {
     const track = trackRef.current;
@@ -448,6 +456,10 @@ export default function Showcase({ variant }: Props) {
       applyLayout();
       slideReady.current = true; // layout settled; future navigation may animate
     }, 750);
+    // Safety: never leave the carousel hidden if the step never validates.
+    const tReveal = setTimeout(() => {
+      if (!laidRef.current) { applyLayout(); laidRef.current = true; setLaid(true); }
+    }, 1300);
     try {
       if (document.fonts?.ready) document.fonts.ready.then(applyLayout);
     } catch {}
@@ -491,6 +503,19 @@ export default function Showcase({ variant }: Props) {
       let dt = t - m.current.last;
       m.current.last = t;
       if (dt > 120) dt = 120;
+      // Until the first correct layout: re-measure every frame (an early measurement can
+      // cache a too-small step and mis-center card 0). Reveal only once the step is a
+      // plausible card-width apart, placed without animation.
+      if (!laidRef.current) {
+        measureStep();
+        if (m.current.cardW > 0 && m.current.step > m.current.cardW * 0.6) {
+          place(true);
+          laidRef.current = true;
+          setLaid(true);
+        }
+        m.current.raf = requestAnimationFrame(loop);
+        return;
+      }
       if (!m.current.step) measureStep();
       const active = sync.current.playing && !sync.current.hasOverlay && !m.current.dragging && !m.current.hovering;
       if (active) {
@@ -533,6 +558,7 @@ export default function Showcase({ variant }: Props) {
       document.removeEventListener('visibilitychange', onVis);
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(tReveal);
       if (m.current.snapT) clearTimeout(m.current.snapT);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -653,7 +679,7 @@ export default function Showcase({ variant }: Props) {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
-          style={sx({ position: 'relative', flex: '1 1 auto', minHeight: 0, overflow: 'hidden', padding: '6px 0', touchAction: 'pan-y' })}
+          style={sx({ position: 'relative', flex: '1 1 auto', minHeight: 0, overflow: 'hidden', padding: '6px 0', touchAction: 'pan-y', opacity: laid ? 1 : 0, transition: 'opacity 0.3s ease' })}
         >
           <div ref={trackRef} style={sx({ display: 'flex', gap: 'clamp(8px,1vw,16px)', height: '100%', alignItems: 'stretch', transition: 'none', willChange: 'transform' })}>
             {LOOP.map((p, li) => {
