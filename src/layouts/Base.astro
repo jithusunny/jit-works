@@ -2,7 +2,7 @@
 export interface Props {
   title: string;
   description: string;
-  /** When true, emit noindex — the Upwork-safe surface should not compete with the main page. */
+  /** When true, emit noindex, as the Upwork-safe surface should not compete with the main page. */
   noindex?: boolean;
 }
 const { title, description, noindex = false } = Astro.props;

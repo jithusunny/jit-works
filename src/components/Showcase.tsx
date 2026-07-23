@@ -95,7 +95,7 @@ function PlaceholderShot({ label, i }: { label: string; i: number }) {
   );
 }
 
-/** A tiny, distinct thumbnail motif per media index — a stand-in until real screenshots land. */
+/** A tiny, distinct thumbnail motif per media index; a stand-in until real screenshots land. */
 function MiniShot({ i }: { i: number }) {
   return (
     <div style={sx({ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '3px', padding: '6px', background: 'linear-gradient(150deg,#F3F7EE,#E9F1E3)' })}>
@@ -440,7 +440,7 @@ export default function Showcase({ variant }: Props) {
     const t1 = setTimeout(applyLayout, 220);
     const t2 = setTimeout(() => {
       applyLayout();
-      slideReady.current = true; // layout settled — future navigation may animate
+      slideReady.current = true; // layout settled; future navigation may animate
     }, 750);
     try {
       if (document.fonts?.ready) document.fonts.ready.then(applyLayout);
@@ -631,7 +631,7 @@ export default function Showcase({ variant }: Props) {
           </div>
           <h1 style={sx({ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'clamp(46px,5.83vw,150px)', lineHeight: 0.9, letterSpacing: '-0.04em', margin: '0 0 clamp(10px,1.5vh,18px)', color: '#20211B' })}>Jit works.</h1>
           <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: 'clamp(14.5px,1.25vw,30px)', lineHeight: 1.45, color: '#57584A', margin: 0, maxWidth: '36ch' })}>
-            Projects, tools, and experiments I&rsquo;ve brought to life. Browse below &mdash; click any one for the story.
+            Projects, tools, and experiments I&rsquo;ve brought to life. Browse below, and click any one for the story.
           </p>
         </div>
       </section>
@@ -902,7 +902,7 @@ function ProjectOverlay({
           </a>
         ) : (
           <div style={sx({ fontFamily: 'var(--font-ui)', fontSize: '14px', color: '#8B8977', background: '#F3F0E6', border: '1px solid #E4DFCF', borderRadius: '12px', padding: '13px 16px', marginTop: '6px', lineHeight: 1.45 })}>
-            {p.href ? 'Shown as visual proof on this surface.' : 'Private preview — not publicly linked yet.'}
+            {p.href ? 'Shown as visual proof on this surface.' : 'Private preview, not publicly linked yet.'}
           </div>
         )}
       </div>
@@ -925,7 +925,7 @@ function AboutOverlay({
         <span style={sx({ width: '18px', height: '2px', background: '#C9F24E', display: 'inline-block' })} />About
       </div>
       <h2 style={sx({ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(28px,3vw,38px)', letterSpacing: '-0.03em', margin: '0 0 16px', color: '#20211B' })}>Hi, I&rsquo;m Jithu.</h2>
-      <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: '17px', lineHeight: 1.6, color: '#3C3D34', margin: '0 0 16px' })}>I build software, systems, and experiments around ideas that genuinely excite me &mdash; from local-first personal tools to real-time multiplayer games and AI-moderated chat.</p>
+      <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: '17px', lineHeight: 1.6, color: '#3C3D34', margin: '0 0 16px' })}>I build software, systems, and experiments around ideas that genuinely excite me, from local-first personal tools to real-time multiplayer games and AI-moderated chat.</p>
       <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: '17px', lineHeight: 1.6, color: '#57584A', margin: '0 0 24px' })}>This site is a small, honest map of that work. If something here fits what you&rsquo;re building, the best next step is a message on Upwork.</p>
       <a href={UPWORK_URL} target="_blank" rel="noopener" style={sx({ display: 'inline-flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: '15px', color: '#F1F7F0', background: '#2E5E43', padding: '12px 18px', borderRadius: '12px', boxShadow: '0 10px 22px -10px rgba(46,94,67,0.7)' })}>
         <span style={sx({ width: '11px', height: '11px', borderRadius: '50%', background: '#C9F24E' })} />{primaryLabel} ↗
