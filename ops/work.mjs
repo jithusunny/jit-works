@@ -25,11 +25,15 @@ function die(message, code = 1) {
   process.exitCode = code;
 }
 
+// gh can emit multi-megabyte JSON; the Node default 1 MiB maxBuffer turns that into ENOBUFS.
+const MAX_BUFFER = 64 * 1024 * 1024;
+
 function command(binary, args, options = {}) {
   return execFileSync(binary, args, {
     cwd: options.cwd || ROOT,
     encoding: 'utf8',
     input: options.input,
+    maxBuffer: MAX_BUFFER,
     stdio: options.input === undefined ? ['ignore', 'pipe', 'pipe'] : ['pipe', 'pipe', 'pipe'],
   }).trim();
 }
@@ -39,6 +43,7 @@ function attempt(binary, args, options = {}) {
     cwd: options.cwd || ROOT,
     encoding: 'utf8',
     input: options.input,
+    maxBuffer: MAX_BUFFER,
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 }
