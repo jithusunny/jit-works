@@ -1,0 +1,18 @@
+---
+import Base from '../layouts/Base.astro';
+import Showcase from '../components/Showcase.tsx';
+---
+
+<!--
+  Permanent Upwork-safe surface. Self-contained: the only contact action is
+  "Continue on Upwork", and no email, phone, social, booking, or contact-form
+  path is reachable from here. Project destinations are linked only after their
+  contact-boundary audit passes (see src/data/projects.ts → upworkLinkable).
+-->
+<Base
+  title="Jithu Sunny — Selected work"
+  description="Selected software, tools, and experiments by Jithu Sunny. Continue the conversation on Upwork."
+  noindex={true}
+>
+  <Showcase variant="upwork" client:load />
+</Base>

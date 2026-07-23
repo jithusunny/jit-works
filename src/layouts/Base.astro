@@ -1,0 +1,153 @@
+---
+export interface Props {
+  title: string;
+  description: string;
+  /** When true, emit noindex — the Upwork-safe surface should not compete with the main page. */
+  noindex?: boolean;
+}
+const { title, description, noindex = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://jit.works').href;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex,follow" />}
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta name="color-scheme" content="light" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:wght@300;400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  /* ===== Design tokens (from the Claude Design handoff) ===== */
+  :root {
+    --bg: #efeade;
+    --surface: #fbf9f2;
+    --gallery: #e8eee1;
+    --green: #2e5e43;
+    --green-hover: #204b33;
+    --green-mid: #3e7a5b;
+    --dot-live: #3e9e5b;
+    --lime: #c9f24e;
+    --ink: #20211b;
+    --ink-2: #23241e;
+    --body: #3c3d34;
+    --secondary: #57584a;
+    --muted: #8b8977;
+    --muted-2: #9a9784;
+    --muted-3: #a7a492;
+    --border: #e4dfcf;
+    --border-2: #e1ddce;
+    --hairline: #ebe5d5;
+    --backdrop: rgba(28, 26, 20, 0.52);
+
+    --font-display: 'Bricolage Grotesque', sans-serif;
+    --font-ui: 'Figtree', system-ui, sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    background: var(--bg);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    color: var(--ink-2);
+  }
+  img {
+    display: block;
+    max-width: 100%;
+  }
+  a {
+    color: var(--green);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--green-hover);
+  }
+  button {
+    font-family: inherit;
+  }
+
+  /* ===== Animation spec (deliberate, minimal) ===== */
+  @keyframes riseIn {
+    from {
+      opacity: 0;
+      transform: translateY(15px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes panelIn {
+    from {
+      opacity: 0;
+      transform: translateY(16px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes sheetUp {
+    from {
+      opacity: 0;
+      transform: translateY(26px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+
+  /* Visible keyboard focus (accessibility baseline) */
+  :focus-visible {
+    outline: 2px solid var(--green-mid);
+    outline-offset: 2px;
+  }
+</style>
