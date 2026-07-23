@@ -364,7 +364,7 @@ export default function Showcase({ variant }: Props) {
   function closeOverlay() {
     setOverlay(null);
     const pf = m.current.prevFocus as HTMLElement | null;
-    if (pf && pf.focus) setTimeout(() => { try { pf.focus(); } catch {} }, 0);
+    if (pf && pf.focus) setTimeout(() => { try { pf.focus({ preventScroll: true }); } catch {} }, 0);
   }
   function openLightbox(id: string, i: number) {
     m.current.prevFocusLB = document.activeElement;
@@ -372,8 +372,10 @@ export default function Showcase({ variant }: Props) {
   }
   function closeLightbox() {
     setLightbox(null);
+    // preventScroll so returning focus to the gallery thumb doesn't yank the overlay's
+    // image column to the bottom (leaving it stuck-looking).
     const pf = m.current.prevFocusLB as HTMLElement | null;
-    if (pf && pf.focus) setTimeout(() => { try { pf.focus(); } catch {} }, 0);
+    if (pf && pf.focus) setTimeout(() => { try { pf.focus({ preventScroll: true }); } catch {} }, 0);
   }
   function stepLightbox(d: number) {
     setLightbox((lb) => {
@@ -819,16 +821,16 @@ function ProjectOverlay({
 
   const shellStyle = isMobile
     ? sx({ position: 'fixed', inset: 0, width: '100%', height: '100%', background: '#FBF9F2', overflow: 'auto', display: 'flex', flexDirection: 'column', animation: 'sheetUp 0.32s cubic-bezier(0.22,1,0.36,1)', WebkitOverflowScrolling: 'touch' })
-    : sx({ width: 'min(80vw,1180px)', height: 'min(82vh,800px)', background: '#FBF9F2', borderRadius: '24px', boxShadow: '0 50px 100px -35px rgba(30,22,12,0.6)', overflow: 'hidden', position: 'relative', display: 'flex', flexWrap: 'wrap', animation: 'panelIn 0.34s cubic-bezier(0.22,1,0.36,1)' });
+    : sx({ width: 'min(80vw,1180px)', height: 'min(82vh,800px)', background: '#FBF9F2', borderRadius: '24px', boxShadow: '0 50px 100px -35px rgba(30,22,12,0.6)', overflow: 'hidden', position: 'relative', display: 'flex', flexWrap: 'nowrap', animation: 'panelIn 0.34s cubic-bezier(0.22,1,0.36,1)' });
   const galleryStyle = isMobile
     ? sx({ flex: 'none', height: '44dvh', minHeight: '250px', background: '#E8EEE1', overflow: 'auto', display: 'flex', flexDirection: 'row', gap: '12px', padding: '16px', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' })
-    : sx({ flex: '1.15 1 380px', minWidth: 'min(100%,360px)', background: '#E8EEE1', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', padding: 'clamp(22px,2.4vw,38px)' });
+    : sx({ flex: '1.15 1 380px', minWidth: '340px', minHeight: 0, background: '#E8EEE1', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', padding: 'clamp(22px,2.4vw,38px)' });
   const galleryItem = isMobile
     ? sx({ flex: 'none', width: '84%', height: '100%', scrollSnapAlign: 'center', background: '#FFFFFF', borderRadius: '16px', boxShadow: '0 22px 46px -30px rgba(30,60,40,0.5)', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' })
     : sx({ flex: 'none', width: '100%', minHeight: 'clamp(210px,30vh,320px)', background: '#FFFFFF', borderRadius: '18px', boxShadow: '0 26px 50px -32px rgba(30,60,40,0.5)', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' });
   const detailStyle = isMobile
     ? sx({ flex: '1 0 auto', padding: '22px 20px calc(22px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column' })
-    : sx({ flex: '1 1 340px', minWidth: '290px', padding: 'clamp(22px,2.4vw,42px)', display: 'flex', flexDirection: 'column', overflow: 'auto' });
+    : sx({ flex: '1 1 340px', minWidth: '290px', minHeight: 0, padding: 'clamp(22px,2.4vw,42px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' });
 
   return (
     <div ref={panelRef} role="dialog" aria-modal="true" aria-label={p.title} style={shellStyle}>
