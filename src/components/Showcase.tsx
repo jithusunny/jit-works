@@ -22,6 +22,12 @@ const LOOP: Project[] = [projects[N - 1], ...projects, projects[0]];
 const DURATION = AUTOPLAY_SECONDS * 1000;
 /** The track's slide transition. Applied imperatively so it is never lost to vdom diffing. */
 const TRACK_TRANS = 'transform 0.6s cubic-bezier(0.4,0,0.2,1)';
+/**
+ * Hero height, shared across the mobile/desktop breakpoint so nothing jumps at 640px.
+ * The `vw` term shrinks the hero as the window narrows (cards rise gradually); the `86dvh`
+ * cap keeps the full-bleed hero on wide screens as the design intends.
+ */
+const HERO_H = 'clamp(300px, calc(10dvh + 60vw), 86dvh)';
 const pad = (x: number) => String(x).padStart(2, '0');
 const real = (vi: number) => (((vi - 1) % N) + N) % N;
 
@@ -547,9 +553,8 @@ export default function Showcase({ variant }: Props) {
   const pageStyle = isMobile
     ? sx({ height: '100dvh', minHeight: '520px', overflow: 'hidden', position: 'relative', background: 'var(--bg)', display: 'flex', flexDirection: 'column' })
     : sx({ minHeight: '100dvh', overflowX: 'clip', position: 'relative', background: 'var(--bg)', display: 'flex', flexDirection: 'column' });
-  const heroSectionStyle = isMobile
-    ? sx({ flex: 'none', position: 'relative', zIndex: 1, height: 'clamp(330px,53dvh,560px)' })
-    : sx({ flex: 'none', position: 'relative', zIndex: 1, height: 'max(460px,86dvh)' });
+  // Same height on both sides of the breakpoint (see HERO_H) so the cards don't jump at 640px.
+  const heroSectionStyle = sx({ flex: 'none', position: 'relative', zIndex: 1, height: HERO_H });
   const heroPhotoWrapStyle = isMobile
     ? sx({ position: 'absolute', left: '-18vw', top: '-9dvh', width: '138vw', height: '64dvh', pointerEvents: 'none' })
     : sx({ position: 'absolute', left: '-4.2vw', top: '-8.3dvh', width: '81.3vw', height: '100dvh', pointerEvents: 'none' });
