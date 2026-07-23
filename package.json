@@ -3,11 +3,25 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
     "test": "npm run test:work",
     "test:work": "node --test ops/*.test.mjs",
     "work": "node ops/work.mjs"
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^12.6.0",
+    "@astrojs/preact": "^4.1.0",
+    "astro": "^5.13.0",
+    "preact": "^10.27.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "typescript": "^5.9.3"
   }
 }
