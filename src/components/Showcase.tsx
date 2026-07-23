@@ -30,7 +30,7 @@ const TRACK_TRANS = 'transform 0.6s cubic-bezier(0.4,0,0.2,1)';
  * The `vw` term shrinks the hero as the window narrows (cards rise gradually); the `86dvh`
  * cap keeps the full-bleed hero on wide screens as the design intends.
  */
-const HERO_H = 'clamp(300px, calc(10dvh + 60vw), 78dvh)';
+const HERO_H = 'clamp(300px, calc(10dvh + 60vw), 74dvh)';
 const pad = (x: number) => String(x).padStart(2, '0');
 const real = (vi: number) => (((vi - CLONES) % N) + N) % N;
 
@@ -588,26 +588,27 @@ export default function Showcase({ variant }: Props) {
     : sx({ minHeight: '100dvh', overflowX: 'clip', position: 'relative', background: 'var(--bg)', display: 'flex', flexDirection: 'column' });
   // Same height on both sides of the breakpoint (see HERO_H) so the cards don't jump at 640px.
   const heroSectionStyle = sx({ flex: 'none', position: 'relative', zIndex: 1, height: HERO_H });
+  // Desktop wrap height tracks 78vw so the scene scales down with the window (both people
+  // stay in frame); a soft bottom fade on the wrap guarantees the photo dissolves instead of
+  // ending in a hard edge when the shortened wrap ends before the radial mask does.
+  const WRAP_FADE = 'linear-gradient(to bottom, #000 76%, transparent 98%)';
   const heroPhotoWrapStyle = isMobile
     ? sx({ position: 'absolute', left: '-18vw', top: '-9dvh', width: '138vw', height: '64dvh', pointerEvents: 'none' })
-    : sx({ position: 'absolute', left: '-4.2vw', top: '-8.3dvh', width: '81.3vw', height: '100dvh', pointerEvents: 'none' });
+    : sx({ position: 'absolute', left: '-4.2vw', top: '-8.3dvh', width: '81.3vw', height: 'min(100dvh, 78vw)', pointerEvents: 'none', WebkitMaskImage: WRAP_FADE, maskImage: WRAP_FADE });
   const heroTextStyle = isMobile
     ? sx({ position: 'absolute', zIndex: 2, left: 0, right: 0, bottom: 0, padding: '0 clamp(20px,6vw,30px) clamp(6px,1.2vh,14px)', animation: 'riseIn 0.6s cubic-bezier(0.22,1,0.36,1) both' })
     : sx({ position: 'absolute', zIndex: 2, top: 0, bottom: 0, right: '5.7vw', width: 'clamp(300px,34.4vw,760px)', display: 'flex', flexDirection: 'column', justifyContent: 'center', animation: 'riseIn 0.6s cubic-bezier(0.22,1,0.36,1) both' });
+  // The design's original dissolve masks. They reach full transparency inside the photo
+  // element, so the image never shows a hard rectangular edge.
   const photoMask = isMobile
-    ? 'radial-gradient(ellipse 92% 74% at 50% 46%, #000 30%, rgba(0,0,0,0.9) 52%, rgba(0,0,0,0.6) 70%, rgba(0,0,0,0.3) 84%, transparent 100%)'
-    : 'radial-gradient(ellipse 86% 90% at 46% 56%, #000 36%, rgba(0,0,0,0.9) 56%, rgba(0,0,0,0.58) 73%, rgba(0,0,0,0.28) 87%, transparent 100%)';
+    ? 'radial-gradient(ellipse 70% 55% at 46% 38%, #000 10%, rgba(0,0,0,0.85) 35%, rgba(0,0,0,0.55) 58%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.1) 90%, transparent 100%)'
+    : 'radial-gradient(ellipse 62% 66% at 36% 46%, #000 22%, rgba(0,0,0,0.9) 42%, rgba(0,0,0,0.6) 62%, rgba(0,0,0,0.32) 78%, rgba(0,0,0,0.1) 91%, transparent 100%)';
   const photoStyle = sx({
     width: '100%', height: '100%', objectFit: 'cover',
-    objectPosition: isMobile ? '50% 44%' : '48% 58%',
+    objectPosition: isMobile ? '42% 20%' : '40% 70%',
     opacity: isMobile ? PHOTO_OPACITY_MOBILE : PHOTO_OPACITY_DESKTOP,
     WebkitMaskImage: photoMask, maskImage: photoMask, animation: 'fadeIn 0.9s ease both',
   });
-  // Soft page-colour scrim behind the hero text so it stays readable while both faces
-  // and the handshake remain visible (right side on desktop, bottom on mobile).
-  const heroScrimStyle = isMobile
-    ? sx({ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', animation: 'fadeIn 0.9s ease both', background: 'linear-gradient(to top, var(--bg) 2%, rgba(239,234,222,0.8) 22%, rgba(239,234,222,0.3) 42%, transparent 58%)' })
-    : sx({ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', animation: 'fadeIn 0.9s ease both', background: 'linear-gradient(to left, var(--bg) 4%, rgba(239,234,222,0.78) 20%, rgba(239,234,222,0.34) 33%, transparent 44%)' });
   const carouselSectionStyle = isMobile
     ? sx({ flex: '1 1 auto', minHeight: 0, position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', paddingBottom: 'clamp(10px,1.7vh,22px)', animation: 'riseIn 0.65s cubic-bezier(0.22,1,0.36,1) 0.12s both' })
     : sx({ flex: 'none', height: 'min(89dvh, calc(clamp(540px, 37vw, 860px) + 78px))', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', paddingBottom: 'clamp(14px,2vh,30px)', animation: 'riseIn 0.65s cubic-bezier(0.22,1,0.36,1) 0.12s both' });
@@ -668,7 +669,6 @@ export default function Showcase({ variant }: Props) {
         <div aria-hidden="true" style={heroPhotoWrapStyle}>
           <img src="/assets/jithu-hero.jpg" alt="" style={photoStyle} />
         </div>
-        <div aria-hidden="true" style={heroScrimStyle} />
         <div style={heroTextStyle}>
           <div style={sx({ fontFamily: 'var(--font-mono)', fontSize: 'clamp(10.5px,0.78vw,19px)', letterSpacing: '0.16em', textTransform: 'uppercase', color: '#3E7A5B', marginBottom: 'clamp(8px,1.4vh,16px)', display: 'flex', alignItems: 'center', gap: '9px' })}>
             <span style={sx({ width: '22px', height: '2px', background: '#C9F24E', display: 'inline-block' })} />A living collection
