@@ -9,7 +9,8 @@
     "astro": "astro",
     "test": "npm run test:work",
     "test:work": "node --test ops/*.test.mjs",
-    "work": "node ops/work.mjs"
+    "work": "node ops/work.mjs",
+    "deploy": "astro build && wrangler deploy"
   },
   "engines": {
     "node": ">=20"
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "wrangler": "^4.113.0"
   }
 }

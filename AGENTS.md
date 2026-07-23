@@ -68,6 +68,8 @@ Briefly nudge when work bypasses the active item, duplicates status, reopens set
   `npm install --include=dev`, otherwise devDependencies are silently omitted.
 - Dev server: `npm run dev` (the Cloudflare adapter does not support `astro preview`).
 - Build: `npm run build` · Type-check: `npx astro check`
+- Deploy: `npm run deploy` (Cloudflare Worker with static assets; config in `wrangler.jsonc`,
+  currently on workers.dev until the jit.works zone is onboarded to the Cloudflare account).
 - Work status: `npm run work -- brief`
 - Work-system tests: `npm run test:work`
 - Full current test suite: `npm test`

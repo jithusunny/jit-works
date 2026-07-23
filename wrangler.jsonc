@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jit-works",
+  // Astro's Cloudflare adapter emits this worker entry; with the site fully
+  // prerendered it only handles requests that miss the static assets (404s).
+  "main": "dist/_worker.js/index.js",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // Enable once the jit.works zone is onboarded to this Cloudflare account
+  // (add the site in the dashboard and point the registrar's nameservers at it).
+  // "routes": [{ "pattern": "jit.works", "custom_domain": true }]
+  "workers_dev": true
+}
