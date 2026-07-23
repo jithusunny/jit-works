@@ -20,6 +20,8 @@ const sx = (o: Record<string, unknown>): JSX.CSSProperties => o as JSX.CSSProper
 const N = projects.length;
 const LOOP: Project[] = [projects[N - 1], ...projects, projects[0]];
 const DURATION = AUTOPLAY_SECONDS * 1000;
+/** The track's slide transition. Applied imperatively so it is never lost to vdom diffing. */
+const TRACK_TRANS = 'transform 0.6s cubic-bezier(0.4,0,0.2,1)';
 const pad = (x: number) => String(x).padStart(2, '0');
 const real = (vi: number) => (((vi - 1) % N) + N) % N;
 
@@ -135,6 +137,11 @@ export default function Showcase({ variant }: Props) {
   const sync = useRef({ playing: true, hasOverlay: false, index: 1 });
   sync.current = { playing, hasOverlay: overlay != null, index };
 
+  // Slide animation stays off until the initial layout settles, so early re-measures
+  // reposition instantly instead of animating a visible jump.
+  const slideReady = useRef(false);
+  const trans = () => (slideReady.current ? TRACK_TRANS : 'none');
+
   function baseOffset() {
     return Math.max(0, ((m.current.vpW || 0) - (m.current.cardW || 0)) / 2);
   }
@@ -179,8 +186,9 @@ export default function Showcase({ variant }: Props) {
       tr.style.transition = 'none';
       tr.style.transform = 'translateX(' + target + 'px)';
       void tr.offsetWidth;
-      tr.style.transition = '';
+      tr.style.transition = trans();
     } else {
+      tr.style.transition = trans();
       tr.style.transform = 'translateX(' + target + 'px)';
     }
     m.current.appliedX = target;
@@ -287,7 +295,7 @@ export default function Showcase({ variant }: Props) {
     m.current.dragging = false;
     const dx = e.clientX - m.current.startX;
     const tr = trackRef.current;
-    if (tr) tr.style.transition = '';
+    if (tr) tr.style.transition = trans();
     const th = Math.max(50, m.current.step * 0.14);
     if (dx <= -th) next();
     else if (dx >= th) prev();
@@ -316,7 +324,10 @@ export default function Showcase({ variant }: Props) {
 
     applyLayout();
     const t1 = setTimeout(applyLayout, 220);
-    const t2 = setTimeout(applyLayout, 750);
+    const t2 = setTimeout(() => {
+      applyLayout();
+      slideReady.current = true; // layout settled — future navigation may animate
+    }, 750);
     try {
       if (document.fonts?.ready) document.fonts.ready.then(applyLayout);
     } catch {}
@@ -529,7 +540,7 @@ export default function Showcase({ variant }: Props) {
           onPointerCancel={onPointerUp}
           style={sx({ position: 'relative', flex: '1 1 auto', minHeight: 0, overflow: 'hidden', padding: '6px 0', touchAction: 'pan-y' })}
         >
-          <div ref={trackRef} style={sx({ display: 'flex', gap: 'clamp(8px,1vw,16px)', height: '100%', alignItems: 'stretch', transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)', willChange: 'transform' })}>
+          <div ref={trackRef} style={sx({ display: 'flex', gap: 'clamp(8px,1vw,16px)', height: '100%', alignItems: 'stretch', transition: 'none', willChange: 'transform' })}>
             {LOOP.map((p, li) => {
               const cur = mediaSel[p.id] || 0;
               const link = productLink(p, isUpwork);
