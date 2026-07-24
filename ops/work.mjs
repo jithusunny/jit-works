@@ -158,7 +158,7 @@ function addIssueToProject(value, issueUrl) {
 
 function printItems(selected) {
   for (const item of selected) {
-    const labels = [field(item, 'Status'), field(item, 'Product'), field(item, 'Phase'), field(item, 'Area')].filter(Boolean).join(' / ');
+    const labels = [field(item, 'Status'), field(item, 'Product'), field(item, 'Maturity'), field(item, 'Area')].filter(Boolean).join(' / ');
     console.log(`- ${title(item)}${labels ? ` [${labels}]` : ''}`);
     if (url(item)) console.log(`  ${url(item)}`);
   }
@@ -171,9 +171,9 @@ function brief(value) {
   const ready = withStatus('Ready').slice(0, 3);
   const blocked = withStatus('Blocked');
   const done = withStatus('Done').slice(-3).reverse();
-  const phases = [...new Set(active.map((item) => field(item, 'Phase')).filter(Boolean))];
+  const maturities = [...new Set(active.map((item) => field(item, 'Maturity')).filter(Boolean))];
 
-  console.log(`Phase: ${phases.join(', ') || 'not selected'}`);
+  console.log(`Maturity: ${maturities.join(', ') || 'not selected'}`);
   console.log(`Active: ${active.length ? active.map(title).join(' | ') : 'none'}`);
   console.log(`Ready here: ${ready.length ? ready.map(title).join(' | ') : 'none ready'}`);
   console.log(`Blocked: ${blocked.length ? blocked.map(title).join(' | ') : 'none'}`);
@@ -192,17 +192,17 @@ function option(args, name) {
 
 function showPlan(value, args) {
   const product = value.productName;
-  const phase = option(args, '--phase');
+  const maturity = option(args, '--maturity');
   const area = option(args, '--area');
   const includeInactive = args.includes('--all');
-  const rows = planRows(productItems(value), { product, phase, area, includeInactive });
+  const rows = planRows(productItems(value), { product, maturity, area, includeInactive });
   if (!rows.length) {
     console.log('No matching planned work.');
     return;
   }
   let lastGroup = '';
   for (const row of rows) {
-    const group = `${row.product || 'No product'} | ${row.phase || 'No phase'} | ${row.area || 'No area'}`;
+    const group = `${row.product || 'No product'} | ${row.maturity || 'No maturity'} | ${row.area || 'No area'}`;
     if (group !== lastGroup) {
       if (lastGroup) console.log('');
       console.log(group);
@@ -230,7 +230,7 @@ function search(value, args) {
 function capture(value, args) {
   const issueTitle = args[0];
   if (!issueTitle) {
-    throw new Error('Usage: npm run work -- capture "title" [--type ... --area ... --phase ... --priority ... --size ... --body-file path --confirm-new]');
+    throw new Error('Usage: npm run work -- capture "title" [--type ... --area ... --maturity ... --priority ... --size ... --body-file path --confirm-new]');
   }
   const repo = `${value.owner}/${value.productRepo}`;
   const repositoryIssues = JSON.parse(gh(['issue', 'list', '--repo', repo, '--state', 'all', '--limit', '1000', '--json', 'title,url,state']));
@@ -244,7 +244,7 @@ function capture(value, args) {
         Product: value.productName,
         Type: option(args, '--type'),
         Area: option(args, '--area'),
-        Phase: option(args, '--phase'),
+        Maturity: option(args, '--maturity'),
         Priority: option(args, '--priority'),
         Size: option(args, '--size'),
       });
@@ -273,7 +273,7 @@ function capture(value, args) {
     Product: value.productName,
     Type: option(args, '--type'),
     Area: option(args, '--area'),
-    Phase: option(args, '--phase'),
+    Maturity: option(args, '--maturity'),
     Priority: option(args, '--priority'),
     Size: option(args, '--size'),
   };
@@ -312,7 +312,7 @@ function start(value, args) {
   if (field(selected, 'Status').toLowerCase() !== 'ready') throw new Error('Only a Ready item can start');
   if (field(selected, 'Type').toLowerCase() === 'epic') throw new Error('Split the epic into S slices before starting');
   if (field(selected, 'Size').toLowerCase() !== 's') throw new Error('Only an S item can start');
-  for (const name of ['Product', 'Phase', 'Area', 'Priority', 'Type']) {
+  for (const name of ['Product', 'Maturity', 'Area', 'Priority', 'Type']) {
     if (!field(selected, name)) throw new Error(`The item is missing ${name}`);
   }
   const blockers = dependencyData(ref, 'blocked_by').filter((issue) => issue.state !== 'closed');
@@ -360,7 +360,7 @@ function audit(value) {
   const inbox = all.filter((item) => field(item, 'Status').toLowerCase() === 'inbox');
   if (inbox.length >= 10) problems.push(`${inbox.length} items are in Inbox; triage before adding more`);
   for (const item of controlled) {
-    for (const name of ['Product', 'Phase', 'Area', 'Priority', 'Type', 'Size']) {
+    for (const name of ['Product', 'Maturity', 'Area', 'Priority', 'Type', 'Size']) {
       if (!field(item, name)) problems.push(`${field(item, 'Status')} item has no ${name}: ${title(item)}`);
     }
   }
@@ -400,7 +400,7 @@ function help() {
   console.log(`Usage: npm run work -- <command>
 
 brief                          Show this product's active work, Ready options, blockers, and recent wins
-plan [--phase X] [--area X]
+plan [--maturity X] [--area X]
                                Show planned work; add --all for Done/Deferred
 search <text>                  Search this product's work and durable knowledge
 capture TITLE                  Search first, then add a public Inbox issue

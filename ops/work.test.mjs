@@ -4,8 +4,8 @@ import test from 'node:test';
 import { field, issueRef, matchingItems, normalizeRestItem, planRows, sameTitle, scopeProductItems, slug } from './work-lib.mjs';
 
 const items = [
-  { title: 'Create the public portfolio shell', product: 'jit.works', status: 'Ready', phase: '1 Secure foundation', area: 'Product', priority: 'P0', type: 'Slice', url: 'https://github.com/o/r/issues/1' },
-  { title: 'Public launch', product: 'Town', status: 'Deferred', phase: '4 Community preview', area: 'Release', priority: 'P2', type: 'Epic', url: 'https://github.com/o/r/issues/2' },
+  { title: 'Create the public portfolio shell', product: 'jit.works', status: 'Ready', maturity: 'Stable', area: 'Product', priority: 'P0', type: 'Slice', url: 'https://github.com/o/r/issues/1' },
+  { title: 'Public launch', product: 'Town', status: 'Deferred', maturity: 'Growth', area: 'Release', priority: 'P2', type: 'Epic', url: 'https://github.com/o/r/issues/2' },
 ];
 
 test('reads normalized Project fields', () => {
@@ -46,9 +46,9 @@ test('exact issue titles compare case-insensitively without fuzzy matching', () 
   assert.equal(sameTitle('Release CI', 'Release CI follow-up'), false);
 });
 
-test('plan filters by phase and area and hides inactive work', () => {
+test('plan filters by maturity and area and hides inactive work', () => {
   assert.equal(planRows(items).length, 1);
-  assert.equal(planRows(items, { phase: '4', includeInactive: true })[0].title, 'Public launch');
+  assert.equal(planRows(items, { maturity: 'growth', includeInactive: true })[0].title, 'Public launch');
   assert.equal(planRows(items, { area: 'product' })[0].title, 'Create the public portfolio shell');
   assert.equal(planRows(items, { product: 'town', includeInactive: true })[0].title, 'Public launch');
 });
