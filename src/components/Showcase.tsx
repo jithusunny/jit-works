@@ -901,7 +901,7 @@ export default function Showcase({ variant }: Props) {
                               <MediaVisual project={p} index={ti} mode="thumbnail" />
                             </button>
                           ))}
-                          <span style={sx({ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 'clamp(9px,0.62vw,12px)', color: '#A7A492', whiteSpace: 'nowrap' })}>{p.screens.length} views · select below, open above</span>
+                          <span style={sx({ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 'clamp(9px,0.62vw,12px)', color: '#A7A492', whiteSpace: 'nowrap' })}>{p.screens.length} views</span>
                         </div>
                       )}
                     </div>
