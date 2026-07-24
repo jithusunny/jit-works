@@ -833,7 +833,7 @@ export default function Showcase({ variant }: Props) {
                           </a>
                         ) : (
                           <span style={sx({ display: 'inline-flex', alignItems: 'center', gap: '7px', fontFamily: 'var(--font-mono)', fontSize: 'clamp(11px,0.72vw,14px)', letterSpacing: '0.05em', textTransform: 'uppercase', color: '#8B8977', background: '#F1EEE1', border: '1px solid #E4DFCF', padding: 'clamp(9px,0.75vw,13px) 15px', borderRadius: '12px', whiteSpace: 'nowrap' })}>
-                            {p.href ? 'Live product' : 'Private preview'}
+                            {p.href ? 'Live product' : p.status}
                           </span>
                         )}
                         <button
@@ -869,7 +869,7 @@ export default function Showcase({ variant }: Props) {
                               key={ti}
                               onClick={() => openLightbox(p.id, ti)}
                               aria-label={'View ' + label}
-                              style={sx({ flex: 'none', width: 'clamp(46px,5vw,74px)', aspectRatio: '16 / 9', padding: 0, borderRadius: '8px', border: '1px solid #D8E0CE', background: '#FFFFFF', cursor: 'pointer', overflow: 'hidden' })}
+                              style={sx({ position: 'relative', flex: 'none', width: 'clamp(46px,5vw,74px)', aspectRatio: '16 / 9', padding: 0, borderRadius: '8px', border: '1px solid #D8E0CE', background: '#FFFFFF', cursor: 'pointer', overflow: 'hidden' })}
                             >
                               <MediaVisual project={p} index={ti} mode="thumbnail" />
                             </button>
@@ -889,7 +889,7 @@ export default function Showcase({ variant }: Props) {
         </div>
 
         {/* controls */}
-        <div style={sx({ flex: 'none', display: 'flex', alignItems: 'center', gap: 'clamp(10px,1.5vw,20px)', padding: 'clamp(8px,1.2vh,14px) clamp(20px,5vw,60px) 0' })}>
+        <div style={sx({ flex: 'none', display: 'flex', alignItems: 'center', gap: 'clamp(10px,1.5vw,20px)', padding: 'clamp(8px,1.2vh,14px) clamp(20px,5vw,60px) max(12px, env(safe-area-inset-bottom))' })}>
           <button onClick={togglePlay} aria-label={playing ? 'Pause auto-advance' : 'Play auto-advance'} style={sx({ flex: 'none', width: '38px', height: '38px', borderRadius: '50%', border: '1px solid #E4DFCF', background: '#FBF9F2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' })}>
             {playing ? (
               <span style={sx({ display: 'flex', gap: '3.5px' })}>
