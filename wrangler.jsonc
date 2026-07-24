@@ -13,8 +13,6 @@
   "observability": {
     "enabled": true
   },
-  // Enable once the jit.works zone is onboarded to this Cloudflare account
-  // (add the site in the dashboard and point the registrar's nameservers at it).
-  // "routes": [{ "pattern": "jit.works", "custom_domain": true }]
+  "routes": [{ "pattern": "jit.works", "custom_domain": true }],
   "workers_dev": true
 }
