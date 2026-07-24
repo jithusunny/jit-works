@@ -12,6 +12,14 @@
 
 export type StatusTone = 'live' | 'beta' | 'preview' | 'sketch';
 
+export interface ProjectMedia {
+  src: string;
+  alt: string;
+  kind?: 'image' | 'video';
+  poster?: string;
+  badge?: string;
+}
+
 export interface Project {
   id: string;
   no: string;
@@ -25,6 +33,8 @@ export interface Project {
   hardPart: string;
   /** Media-switcher tab labels used by the overlay gallery (stage 1/2/3). */
   screens: [string, string, string];
+  /** Approved public media. Omit while an evidence pack is still pending. */
+  media?: [ProjectMedia, ProjectMedia, ProjectMedia];
   /** "The idea" overview. */
   overview: string;
   /** "Under the hood" technical note (public-safe, no private stack leak). */
@@ -57,21 +67,35 @@ export const projects: Project[] = [
     category: 'Dev tools',
     status: 'Private preview',
     statusTone: 'preview',
-    tagline: 'Run and steer your AI coding agents from your phone.',
-    hardPart: 'Jump into a live agent session from anywhere. Approve or redirect in the moment.',
-    screens: ['01 · Sessions', '02 · Live', '03 · Steer'],
+    tagline: 'Start, watch, and steer coding sessions from a laptop or phone.',
+    hardPart: 'The session stays on your own box while every connected device shows the same state.',
+    screens: ['01 · Live', '02 · Sessions', '03 · Approve'],
+    media: [
+      {
+        src: '/assets/projects/mobidev/desktop-working.png',
+        alt: 'Mobidev desktop conversation showing a coding session working on a synthetic notes app.',
+      },
+      {
+        src: '/assets/projects/mobidev/mobile-session-list.png',
+        alt: 'Mobidev phone session list showing synthetic active and waiting coding sessions.',
+      },
+      {
+        src: '/assets/projects/mobidev/mobile-permission.png',
+        alt: 'Mobidev phone conversation showing a synthetic permission request with allow and deny choices.',
+      },
+    ],
     overview:
-      "Coding agents do real work, but usually only while you're glued to a terminal. Mobidev turns that into something you can run from anywhere: start a session, watch it think and act in real time, and step in to steer or approve, whether you're at your desk or on your phone.",
+      'Coding sessions are usually tied to the terminal where they started. Mobidev keeps the agent on an always-on machine and turns the laptop and phone into synchronized windows for starting work, following progress, approving requests, and sending follow-ups.',
     tech:
-      'A single control plane over long-running agent sessions with a live event stream, so laptop and phone stay in sync. Built to observe and safely interrupt agent tool-calls in the moment, not just tail logs.',
+      'One box owns each session and its state. The mobile and desktop interfaces share that session engine, reconnect quietly, and let the owner review permissions, approve plans, or queue and send steering without moving the underlying work.',
     stack: ['Real-time', 'Cross-device', 'Agent sessions'],
     role: 'Design + build',
     period: 'Since 2025',
     upworkLinkable: false,
     features: [
-      'Start & steer agent sessions remotely',
-      'Live session stream, laptop ↔ phone',
-      'Approve or interrupt tool-calls in the moment',
+      'Start and steer sessions on your own box',
+      'The same session on laptop and phone',
+      'Review permissions, plans, and follow-ups',
     ],
   },
   {
@@ -107,13 +131,27 @@ export const projects: Project[] = [
     category: 'AI',
     status: 'Live',
     statusTone: 'live',
-    tagline: 'Anonymous chat that AI cleans up before a message ever lands.',
-    hardPart: 'Screens and masks every message before delivery, and stores nothing.',
-    screens: ['01 · Chat', '02 · Shield', '03 · Anon'],
+    tagline: 'Anonymous one-to-one chat where every message is checked before delivery.',
+    hardPart: 'Contact details are masked first; contextual moderation can deliver, mask, block, or end.',
+    screens: ['01 · Protected', '02 · Blocked', '03 · Masked'],
+    media: [
+      {
+        src: '/assets/projects/safechat/room-protection.png',
+        alt: 'A production SafeChat conversation ended before a coercive secrecy and private-photo request was delivered.',
+      },
+      {
+        src: '/assets/projects/safechat/platform-block.png',
+        alt: 'A production SafeChat phone conversation where an Instagram request is blocked and the ordinary chat continues.',
+      },
+      {
+        src: '/assets/projects/safechat/location-masking.png',
+        alt: 'A production SafeChat conversation with fictional school and location details masked in place.',
+      },
+    ],
     overview:
-      "SafeChat lets people talk anonymously without it turning toxic. Every message passes AI moderation before delivery, which masks identifying details and blocks abuse. Nothing is kept afterwards, because there's no message history at all.",
+      'Anonymous chat makes it easy to expose identifying details or send harmful content before the other person can react. SafeChat adds a visible moderation step at the delivery boundary without adding accounts or retaining a conversation history.',
     tech:
-      "Pre-delivery moderation sits in the send path: each message is screened and identifying information masked before it reaches the recipient. The design is deliberately history-less. Messages aren't stored, so there's nothing to leak later.",
+      'An edge Worker matches two people, then a single-use room processes messages in order. Deterministic patterns mask obvious contact details before a contextual model decides whether to deliver, mask, block, or end. Message text is handled in memory, not persisted.',
     stack: ['AI moderation', 'Anonymous', 'No history'],
     role: 'Design + build',
     period: '2025',
@@ -121,9 +159,9 @@ export const projects: Project[] = [
     ctaLabel: 'Try it live',
     upworkLinkable: false,
     features: [
-      'Moderation before delivery, not after',
-      'Identifying info masked automatically',
-      'No message history by design',
+      'Checked before delivery',
+      'Mask, block, or end in context',
+      'No persisted conversation history',
     ],
   },
   {
@@ -134,12 +172,29 @@ export const projects: Project[] = [
     status: 'Live',
     statusTone: 'live',
     tagline: 'A 3D kart racer in a browser tab, split-screen or online.',
-    hardPart: 'Real-time 3D and cross-device multiplayer, with no install.',
-    screens: ['01 · Track', '02 · Split', '03 · Online'],
+    hardPart: 'Fresh procedural tracks, deterministic simulation, and 1v1 netcode with no install.',
+    screens: ['01 · Gameplay', '02 · Mobile', '03 · Switzerland'],
+    media: [
+      {
+        src: '/assets/projects/rolleo/gameplay-7s.mp4',
+        poster: '/assets/projects/rolleo/gameplay-poster.png',
+        kind: 'video',
+        badge: '7s clip',
+        alt: 'Rolleo gameplay showing synthetic racers on a procedurally generated track.',
+      },
+      {
+        src: '/assets/projects/rolleo/mobile-race.png',
+        alt: 'Rolleo mobile gameplay showing touch controls and synthetic racers.',
+      },
+      {
+        src: '/assets/projects/rolleo/switzerland-race.png',
+        alt: 'Rolleo desktop gameplay showing synthetic racers on the Switzerland track.',
+      },
+    ],
     overview:
       'Rolleo is a proper kart racer that runs in a browser tab, with no install and no store. Grab a friend on the couch for local split-screen, or race people on other devices online, all rendered in real-time 3D on the web.',
     tech:
-      'A real-time 3D racing game running entirely in the browser, with local split-screen rendering and networked cross-device multiplayer, built on web graphics and a low-latency netcode layer.',
+      'A fixed-timestep simulation drives host state, client prediction, and reconciliation replay. Online races use a WebRTC data channel when available and fall back to a lightweight Cloudflare Worker relay.',
     stack: ['WebGL / 3D', 'Split-screen', 'Online multiplayer'],
     role: 'Design + build',
     period: 'Since 2024',
@@ -147,9 +202,9 @@ export const projects: Project[] = [
     ctaLabel: 'Play it now',
     upworkLinkable: false,
     features: [
-      'Runs in the browser, no install',
-      'Local split-screen multiplayer',
-      'Cross-device online races',
+      'Fresh procedural track every race',
+      'Couch 2-player and 1v1 online',
+      'Desktop and mobile, no install',
     ],
   },
 ];

@@ -48,7 +48,7 @@ function productLink(p: Project, isUpwork: boolean): string | undefined {
 const dot = (p: Project): JSX.CSSProperties =>
   sx({ width: '7px', height: '7px', borderRadius: '50%', background: DOT_COLOR[p.statusTone], display: 'inline-block' });
 
-/** A clean, intentional placeholder for a project media stage (real screenshots land in the deploy slice). */
+/** Intentional fallback while a project's approved evidence pack is still pending. */
 function PlaceholderShot({ label, i }: { label: string; i: number }) {
   return (
     <div style={sx({ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: '#FFFFFF' })}>
@@ -104,7 +104,7 @@ function PlaceholderShot({ label, i }: { label: string; i: number }) {
   );
 }
 
-/** A tiny, distinct thumbnail motif per media index; a stand-in until real screenshots land. */
+/** Thumbnail fallback while a project's approved evidence pack is still pending. */
 function MiniShot({ i }: { i: number }) {
   return (
     <div style={sx({ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '3px', padding: '6px', background: 'linear-gradient(150deg,#F3F7EE,#E9F1E3)' })}>
@@ -132,7 +132,77 @@ function MiniShot({ i }: { i: number }) {
   );
 }
 
-/** Full-screen media viewer: ← → / swipe between a project's shots, Esc / × / backdrop to close. */
+function MediaVisual({
+  project,
+  index,
+  mode,
+}: {
+  project: Project;
+  index: number;
+  mode: 'stage' | 'thumbnail' | 'lightbox';
+}) {
+  const asset = project.media?.[index];
+  if (!asset) {
+    return mode === 'thumbnail'
+      ? <MiniShot i={index} />
+      : <PlaceholderShot label={project.screens[index]} i={index} />;
+  }
+
+  const alt = mode === 'lightbox' ? asset.alt : '';
+  const mediaStyle = sx({
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain',
+    background: '#F6F7F3',
+  });
+
+  if (asset.kind === 'video') {
+    if (mode === 'thumbnail' && asset.poster) {
+      return (
+        <div style={sx({ position: 'absolute', inset: 0, background: '#0B0E15' })}>
+          <img src={asset.poster} alt="" loading="lazy" decoding="async" style={mediaStyle} />
+          <span aria-hidden="true" style={sx({ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', fontSize: '18px', textShadow: '0 2px 8px rgba(0,0,0,0.65)' })}>▶</span>
+        </div>
+      );
+    }
+
+    return (
+      <div style={sx({ position: 'absolute', inset: 0, background: '#0B0E15' })}>
+        <video
+          src={asset.src}
+          poster={asset.poster}
+          aria-label={mode === 'lightbox' ? asset.alt : undefined}
+          aria-hidden={mode === 'lightbox' ? undefined : true}
+          controls={mode === 'lightbox'}
+          muted
+          playsInline
+          preload="metadata"
+          onPointerDown={mode === 'lightbox' ? (e) => e.stopPropagation() : undefined}
+          style={mediaStyle}
+        />
+        {mode !== 'lightbox' && (
+          <span aria-hidden="true" style={sx({ position: 'absolute', bottom: '10px', left: '10px', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#FFFFFF', background: 'rgba(18,17,13,0.7)', backdropFilter: 'blur(4px)', borderRadius: '8px', padding: '5px 9px', fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.04em' })}>
+            ▶ {asset.badge ?? 'Video'}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={asset.src}
+      alt={alt}
+      loading={mode === 'lightbox' ? 'eager' : 'lazy'}
+      decoding="async"
+      style={mediaStyle}
+    />
+  );
+}
+
+/** Full-screen media viewer: ← → / swipe between a project's media, Esc / × / backdrop to close. */
 function Lightbox({
   project, index, onClose, onStep,
 }: {
@@ -141,6 +211,7 @@ function Lightbox({
   onClose: () => void;
   onStep: (d: number) => void;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const drag = useRef<{ x: number; on: boolean }>({ x: 0, on: false });
   const total = project.screens.length;
@@ -150,6 +221,21 @@ function Lightbox({
       if (e.key === 'Escape') { e.preventDefault(); onClose(); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); onStep(1); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); onStep(-1); }
+      else if (e.key === 'Tab' && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button, video[controls], [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener('keydown', onKey);
     const t = setTimeout(() => { try { closeRef.current?.focus(); } catch {} }, 30);
@@ -163,6 +249,7 @@ function Lightbox({
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={project.title + ' media'}
@@ -181,14 +268,14 @@ function Lightbox({
 
       {total > 1 && (
         <>
-          <button onClick={() => onStep(-1)} aria-label="Previous image" style={arrow('left')}>&lsaquo;</button>
-          <button onClick={() => onStep(1)} aria-label="Next image" style={arrow('right')}>&rsaquo;</button>
+          <button onClick={() => onStep(-1)} aria-label="Previous media" style={arrow('left')}>&lsaquo;</button>
+          <button onClick={() => onStep(1)} aria-label="Next media" style={arrow('right')}>&rsaquo;</button>
         </>
       )}
 
       <figure style={sx({ margin: 0, width: 'min(96vw, calc(82vh * 16 / 9))', maxWidth: '1400px', display: 'flex', flexDirection: 'column', gap: '14px' })}>
         <div style={sx({ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: '#FFFFFF', borderRadius: 'clamp(10px,1.2vw,16px)', boxShadow: '0 40px 90px -30px rgba(0,0,0,0.6)', overflow: 'hidden' })}>
-          <PlaceholderShot label={project.screens[index]} i={index} />
+          <MediaVisual project={project} index={index} mode="lightbox" />
         </div>
         <figcaption style={sx({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', fontFamily: 'var(--font-mono)', fontSize: '12.5px', letterSpacing: '0.04em', color: 'rgba(241,247,240,0.82)' })}>
           <span>{project.title} · {project.screens[index]}</span>
@@ -768,10 +855,10 @@ export default function Showcase({ variant }: Props) {
                           aria-label={'Open ' + p.title + ' gallery'}
                           style={sx({ position: 'relative', width: 'min(100%, calc(100cqh * 16 / 9))', aspectRatio: '16 / 9', margin: 'auto', padding: 0, border: 'none', background: '#FFFFFF', borderRadius: '12px', boxShadow: '0 24px 48px -26px rgba(30,60,40,0.55)', overflow: 'hidden', cursor: 'zoom-in', display: 'block' })}
                         >
-                          <PlaceholderShot label={p.screens[0]} i={0} />
+                          <MediaVisual project={p} index={0} mode="stage" />
                           <span aria-hidden="true" style={sx({ position: 'absolute', top: '10px', right: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(32,33,27,0.55)', color: '#F1F7F0', fontSize: '15px', backdropFilter: 'blur(3px)' })}>⤢</span>
                           {isMobile && (
-                            <span aria-hidden="true" style={sx({ position: 'absolute', bottom: '10px', left: '10px', fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.05em', color: '#F1F7F0', background: 'rgba(32,33,27,0.55)', padding: '4px 8px', borderRadius: '7px', backdropFilter: 'blur(3px)' })}>{p.screens.length} shots</span>
+                            <span aria-hidden="true" style={sx({ position: 'absolute', bottom: '10px', left: '10px', fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.05em', color: '#F1F7F0', background: 'rgba(32,33,27,0.55)', padding: '4px 8px', borderRadius: '7px', backdropFilter: 'blur(3px)' })}>{p.screens.length} views</span>
                           )}
                         </button>
                       </div>
@@ -784,10 +871,10 @@ export default function Showcase({ variant }: Props) {
                               aria-label={'View ' + label}
                               style={sx({ flex: 'none', width: 'clamp(46px,5vw,74px)', aspectRatio: '16 / 9', padding: 0, borderRadius: '8px', border: '1px solid #D8E0CE', background: '#FFFFFF', cursor: 'pointer', overflow: 'hidden' })}
                             >
-                              <MiniShot i={ti} />
+                              <MediaVisual project={p} index={ti} mode="thumbnail" />
                             </button>
                           ))}
-                          <span style={sx({ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 'clamp(9px,0.62vw,12px)', color: '#A7A492', whiteSpace: 'nowrap' })}>{p.screens.length} shots · tap to enlarge</span>
+                          <span style={sx({ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 'clamp(9px,0.62vw,12px)', color: '#A7A492', whiteSpace: 'nowrap' })}>{p.screens.length} views · tap to enlarge</span>
                         </div>
                       )}
                     </div>
@@ -896,7 +983,7 @@ function ProjectOverlay({
     <div class="scroll-slim" style={galleryStyle}>
       {p.screens.map((label, i) => (
         <button key={i} onClick={() => onOpenLightbox(p.id, i)} aria-label={'Enlarge ' + label} style={{ ...galleryItem, cursor: 'zoom-in', border: 'none', padding: 0 }}>
-          <PlaceholderShot label={label} i={i} />
+          <MediaVisual project={p} index={i} mode="stage" />
         </button>
       ))}
     </div>

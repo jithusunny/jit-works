@@ -43,7 +43,8 @@ Use **Astro** with the **`@astrojs/cloudflare` adapter** and a single **Preact**
 
 ## Evidence
 
-- `npm run build` prerenders `/` and `/upwork` to static HTML; client island 38.6 kB / 10.7 kB gzip.
+- `npm run build` prerenders `/` and `/upwork` to static HTML; client island 46.4 kB / 12.6 kB gzip
+  with the project media viewer.
 - `astro check` passes with 0 errors.
 - Headless-Chrome renders at 390×844, 1440×900, and 1920×1080 reproduce the design's hero, carousel,
   and card anatomy on both routes, and the `variant` prop correctly switches the primary action and
