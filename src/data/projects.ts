@@ -7,8 +7,7 @@
 // owner approval before the deploy slice.
 //
 // `upworkLinkable` is the contact-boundary gate for the /upwork surface: a destination is
-// linked there only after the deploy-slice audit confirms it exposes no off-platform contact
-// path. All four start `false` (audit pending); flip per destination once audited.
+// linked there only after the release audit confirms it exposes no off-platform contact path.
 
 export type StatusTone = 'live' | 'beta' | 'preview' | 'sketch';
 
@@ -31,10 +30,10 @@ export interface Project {
   tagline: string;
   /** Card credibility line: the one clever/hard thing, in plain words. */
   hardPart: string;
-  /** Media-switcher tab labels used by the overlay gallery (stage 1/2/3). */
-  screens: [string, string, string];
+  /** Media-switcher labels used by the card strip and overlay gallery. */
+  screens: [string, ...string[]];
   /** Approved public media. Omit while an evidence pack is still pending. */
-  media?: [ProjectMedia, ProjectMedia, ProjectMedia];
+  media?: [ProjectMedia, ...ProjectMedia[]];
   /** "The idea" overview. */
   overview: string;
   /** "Under the hood" technical note (public-safe, no private stack leak). */
@@ -103,23 +102,44 @@ export const projects: Project[] = [
     no: '02',
     title: 'LifeSuite',
     category: 'Software',
-    status: 'Evidence review',
+    status: 'Live preview',
     statusTone: 'preview',
-    tagline: 'A local-first personal suite designed to work offline and sync encrypted records.',
-    hardPart: 'Its public evidence pack and deployment provenance are still under review.',
-    screens: ['01 · Today', '02 · Suite', '03 · Sync'],
+    tagline: 'A local-first suite connecting people, places, policies, and a daily journal.',
+    hardPart: 'It stays useful offline, encrypts local stores, and seals synced documents before they reach the relay.',
+    screens: ['01 · Overview', '02 · Insurance', '03 · Pulse', '04 · Mobile'],
+    media: [
+      {
+        src: '/assets/projects/lifesuite/connected-overview.png',
+        alt: 'LifeSuite desktop home and phone People view showing synthetic weekly, module, and personal context.',
+      },
+      {
+        src: '/assets/projects/lifesuite/insurance-desktop.png',
+        alt: 'LifeSuite Insurance workspace showing five synthetic policies and a selected policy detail.',
+      },
+      {
+        src: '/assets/projects/lifesuite/pulse-desktop.png',
+        alt: 'LifeSuite Pulse workspace showing a synthetic day of activities, notes, and place context.',
+      },
+      {
+        src: '/assets/projects/lifesuite/policy-mobile.png',
+        alt: 'LifeSuite phone view showing a synthetic insurance policy with renewal, cover, and insured person.',
+      },
+    ],
     overview:
-      'LifeSuite brings daily personal tools into one offline-capable application. Its portfolio evidence and public deployment claims are still under review, so this release shows the concept without linking the product.',
+      'Important personal context is usually scattered across contact lists, notes, policy documents, and reminders. LifeSuite brings that context into one linked system, so a person can connect to a place, policy, or journal entry without copying the same details between tools.',
     tech:
-      'The current implementation uses encrypted local storage and encrypted synchronization. Detailed security and deployment claims will be published only after the evidence review is complete.',
-    stack: ['Local-first', 'Offline', 'E2EE'],
+      'Each module uses an encrypted SQLite store in the browser. Documents are sealed again before synchronization through a blind relay, while the application shell and visited data remain useful offline.',
+    stack: ['Local-first', 'Encrypted stores', 'E2EE sync'],
     role: 'Design + build',
     period: 'Since 2024',
-    upworkLinkable: false,
+    href: 'https://lifesuite-spa.vercel.app',
+    ctaLabel: 'Try it live',
+    // Audited 2026-07-24: account and recovery routes, with no route to Jithu's contact details.
+    upworkLinkable: true,
     features: [
-      'Offline-capable local workflows',
-      'Encrypted local storage and sync',
-      'Public evidence pack under review',
+      'People, places, policies, and a daily journal',
+      'Offline shell with encrypted local stores',
+      'Encrypted document synchronization',
     ],
   },
   {
@@ -155,7 +175,8 @@ export const projects: Project[] = [
     period: '2025',
     href: 'https://safechat.jithusunnyk.workers.dev',
     ctaLabel: 'Try it live',
-    upworkLinkable: false,
+    // Audited 2026-07-24: self-contained chat surface with no outbound contact path.
+    upworkLinkable: true,
     features: [
       'Checked before delivery',
       'Mask, block, or end in context',
@@ -198,6 +219,7 @@ export const projects: Project[] = [
     period: 'Since 2024',
     href: 'https://playrolleo.com',
     ctaLabel: 'Play it now',
+    // Audited 2026-07-24: the live surface exposes a Contact email link.
     upworkLinkable: false,
     features: [
       'Fresh procedural track every race',
