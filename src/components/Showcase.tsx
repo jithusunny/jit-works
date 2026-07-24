@@ -359,22 +359,40 @@ export default function Showcase({ variant }: Props) {
       m.current.appliedX = null;
     }
   }
-  function styleCards(activeIdx: number) {
+  function styleCards(activeIdx: number, noTrans?: boolean) {
     const track = trackRef.current;
-    if (!track) return;
+    if (!track) return undefined;
     const cards = track.children;
+    const previousTransitions: string[] = [];
+    if (noTrans) {
+      for (let i = 0; i < cards.length; i++) {
+        const c = cards[i] as HTMLElement;
+        previousTransitions[i] = c.style.transition;
+        c.style.transition = 'none';
+      }
+    }
     for (let i = 0; i < cards.length; i++) {
       const d = Math.abs(i - activeIdx);
       const scale = d === 0 ? 1 : 0.965;
       const op = d === 0 ? 1 : Math.max(0.22, 0.38 - (d - 1) * 0.12);
-      const c = cards[i] as HTMLElement & { _sc?: string };
+      const c = cards[i] as HTMLElement & { _sc?: string; _op?: string };
       const ns = 'scale(' + scale + ')';
       if (c._sc !== ns) {
         c._sc = ns;
         c.style.transform = ns;
-        c.style.opacity = String(op);
+      }
+      const nextOpacity = String(op);
+      if (c._op !== nextOpacity) {
+        c._op = nextOpacity;
+        c.style.opacity = nextOpacity;
       }
     }
+    if (!noTrans) return undefined;
+    return () => {
+      for (let i = 0; i < cards.length; i++) {
+        (cards[i] as HTMLElement).style.transition = previousTransitions[i];
+      }
+    };
   }
   function place(noTrans?: boolean) {
     const tr = trackRef.current;
@@ -383,16 +401,20 @@ export default function Showcase({ variant }: Props) {
     const vi = m.current.vi;
     const target = baseOffset() - vi * (m.current.step || 0);
     if (noTrans) {
+      // A wrap swaps an active clone for its identical real card. Normalize the track and
+      // card presentation in one layout flush so the replacement cannot fade or scale in.
       tr.style.transition = 'none';
+      const restoreCardTransitions = styleCards(vi, true);
       tr.style.transform = 'translateX(' + target + 'px)';
       void tr.offsetWidth;
       tr.style.transition = trans();
+      restoreCardTransitions?.();
     } else {
       tr.style.transition = trans();
       tr.style.transform = 'translateX(' + target + 'px)';
+      styleCards(vi);
     }
     m.current.appliedX = target;
-    styleCards(vi);
   }
   function applyLayout() {
     measureStep();
