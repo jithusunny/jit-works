@@ -297,6 +297,7 @@ export default function Showcase({ variant }: Props) {
   const [isMobile, setIsMobile] = useState(false);
   const [isShort, setIsShort] = useState(false);
   const [lightbox, setLightbox] = useState<{ id: string; i: number } | null>(null);
+  const [cardMedia, setCardMedia] = useState<Record<string, number>>({});
 
   const trackRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -817,6 +818,7 @@ export default function Showcase({ variant }: Props) {
             {LOOP.map((p, li) => {
               const link = productLink(p, isUpwork);
               const d0 = Math.abs(li - CLONES);
+              const selectedMedia = cardMedia[p.id] ?? 0;
               return (
                 <article
                   key={li}
@@ -873,11 +875,11 @@ export default function Showcase({ variant }: Props) {
                         style={sx({ flex: '1 1 auto', minHeight: 0, display: 'flex', position: 'relative', containerType: 'size' })}
                       >
                         <button
-                          onClick={() => openLightbox(p.id, 0)}
-                          aria-label={'Open ' + p.title + ' gallery'}
+                          onClick={() => openLightbox(p.id, selectedMedia)}
+                          aria-label={'Open ' + p.title + ' · ' + p.screens[selectedMedia]}
                           style={sx({ position: 'relative', width: 'min(100%, calc(100cqh * 16 / 9))', aspectRatio: '16 / 9', margin: 'auto', padding: 0, border: 'none', background: '#FFFFFF', borderRadius: '12px', boxShadow: '0 24px 48px -26px rgba(30,60,40,0.55)', overflow: 'hidden', cursor: 'zoom-in', display: 'block' })}
                         >
-                          <MediaVisual project={p} index={0} mode="stage" />
+                          <MediaVisual project={p} index={selectedMedia} mode="stage" />
                           <span aria-hidden="true" style={sx({ position: 'absolute', top: '10px', right: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(32,33,27,0.55)', color: '#F1F7F0', fontSize: '15px', backdropFilter: 'blur(3px)' })}>⤢</span>
                           {isMobile && (
                             <span aria-hidden="true" style={sx({ position: 'absolute', bottom: '10px', left: '10px', fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.05em', color: '#F1F7F0', background: 'rgba(32,33,27,0.55)', padding: '4px 8px', borderRadius: '7px', backdropFilter: 'blur(3px)' })}>{p.screens.length} views</span>
@@ -889,14 +891,17 @@ export default function Showcase({ variant }: Props) {
                           {p.screens.map((label, ti) => (
                             <button
                               key={ti}
-                              onClick={() => openLightbox(p.id, ti)}
-                              aria-label={'View ' + label}
-                              style={sx({ position: 'relative', flex: 'none', width: 'clamp(46px,5vw,74px)', aspectRatio: '16 / 9', padding: 0, borderRadius: '8px', border: '1px solid #D8E0CE', background: '#FFFFFF', cursor: 'pointer', overflow: 'hidden' })}
+                              onClick={() => setCardMedia((current) => (
+                                current[p.id] === ti ? current : { ...current, [p.id]: ti }
+                              ))}
+                              aria-label={'Show ' + p.title + ' · ' + label}
+                              aria-pressed={selectedMedia === ti}
+                              style={sx({ position: 'relative', flex: 'none', width: 'clamp(46px,5vw,74px)', aspectRatio: '16 / 9', padding: 0, borderRadius: '8px', border: selectedMedia === ti ? '2px solid #3E7A5B' : '1px solid #D8E0CE', boxShadow: selectedMedia === ti ? '0 0 0 2px rgba(62,122,91,0.14)' : 'none', background: '#FFFFFF', cursor: 'pointer', overflow: 'hidden' })}
                             >
                               <MediaVisual project={p} index={ti} mode="thumbnail" />
                             </button>
                           ))}
-                          <span style={sx({ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 'clamp(9px,0.62vw,12px)', color: '#A7A492', whiteSpace: 'nowrap' })}>{p.screens.length} views · tap to enlarge</span>
+                          <span style={sx({ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 'clamp(9px,0.62vw,12px)', color: '#A7A492', whiteSpace: 'nowrap' })}>{p.screens.length} views · select below, open above</span>
                         </div>
                       )}
                     </div>
