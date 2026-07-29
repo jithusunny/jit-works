@@ -41,6 +41,8 @@ export interface Project {
   stack: string[];
   role: string;
   period: string;
+  /** Date when the public claims were last substantively reviewed, in YYYY-MM-DD form. */
+  portfolioReviewedAt: `${number}-${number}-${number}`;
   /** Live destination for the product. Absent for private-preview work (Mobidev). */
   href?: string;
   /** Action label when the destination is linked (e.g. "Try it live", "Play it now"). */
@@ -90,6 +92,7 @@ export const projects: Project[] = [
     stack: ['Real-time', 'Cross-device', 'Agent sessions'],
     role: 'Design + build',
     period: 'Since 2025',
+    portfolioReviewedAt: '2026-07-24',
     upworkLinkable: false,
     features: [
       'Start and steer sessions on your own box',
@@ -132,6 +135,7 @@ export const projects: Project[] = [
     stack: ['Local-first', 'Encrypted stores', 'E2EE sync'],
     role: 'Design + build',
     period: 'Since 2024',
+    portfolioReviewedAt: '2026-07-24',
     href: 'https://lifesuite-spa.vercel.app',
     ctaLabel: 'Try it live',
     // Audited 2026-07-24: account and recovery routes, with no route to Jithu's contact details.
@@ -173,6 +177,7 @@ export const projects: Project[] = [
     stack: ['AI moderation', 'Anonymous', 'No history'],
     role: 'Design + build',
     period: '2025',
+    portfolioReviewedAt: '2026-07-24',
     href: 'https://safechat.jithusunnyk.workers.dev',
     ctaLabel: 'Try it live',
     // Audited 2026-07-24: self-contained chat surface with no outbound contact path.
@@ -217,6 +222,7 @@ export const projects: Project[] = [
     stack: ['WebGL / 3D', 'Split-screen', 'Online multiplayer'],
     role: 'Design + build',
     period: 'Since 2024',
+    portfolioReviewedAt: '2026-07-24',
     href: 'https://playrolleo.com',
     ctaLabel: 'Play it now',
     // Audited 2026-07-24: the live surface exposes a Contact email link.
