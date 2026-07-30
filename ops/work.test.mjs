@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { field, issueRef, matchingItems, normalizeRestItem, planRows, sameTitle, scopeProductItems, slug } from './work-lib.mjs';
+import {
+  field,
+  issueRef,
+  matchingItems,
+  mergeWorkConfig,
+  normalizeRestItem,
+  planRows,
+  sameTitle,
+  scopeProductItems,
+  slug,
+} from './work-lib.mjs';
 
 const items = [
   { title: 'Create the public portfolio shell', product: 'jit.works', status: 'Ready', maturity: 'Stable', area: 'Product', priority: 'P0', type: 'Slice', url: 'https://github.com/o/r/issues/1' },
@@ -10,6 +20,40 @@ const items = [
 
 test('reads normalized Project fields', () => {
   assert.equal(field(items[0], 'Status'), 'Ready');
+});
+
+test('keeps local Project values outside the tracked work config', () => {
+  const publicConfig = JSON.parse(readFileSync(new URL('../.work/config.json', import.meta.url), 'utf8'));
+  for (const key of ['owner', 'ownerType', 'project', 'fieldIds']) {
+    assert.equal(Object.hasOwn(publicConfig, key), false, `${key} must stay local`);
+  }
+  assert.deepEqual(
+    mergeWorkConfig(publicConfig, {
+      owner: 'contributor',
+      project: '42',
+      fieldIds: { Status: 100 },
+    }),
+    {
+      ...publicConfig,
+      owner: 'contributor',
+      ownerType: 'user',
+      project: '42',
+      fieldIds: { Status: 100 },
+    },
+  );
+});
+
+test('rejects owner Project values in tracked defaults and incomplete local setup', () => {
+  const publicConfig = { productRepo: 'jit-works', productName: 'jit.works' };
+  assert.throws(
+    () => mergeWorkConfig({ ...publicConfig, project: '1' }, { owner: 'o', project: '2', fieldIds: { Status: 3 } }),
+    /tracked work config contains local connection keys: project/,
+  );
+  assert.throws(() => mergeWorkConfig(publicConfig, {}), /local work config is missing owner/);
+  assert.throws(
+    () => mergeWorkConfig(publicConfig, { owner: 'o', project: '2' }),
+    /local work config is missing fieldIds/,
+  );
 });
 
 test('normalizes REST Project items and single-select fields', () => {
