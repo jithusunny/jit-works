@@ -1,0 +1,14 @@
+{
+  "owner": "YOUR_GITHUB_LOGIN",
+  "ownerType": "user",
+  "project": "YOUR_PROJECT_NUMBER",
+  "fieldIds": {
+    "Status": "YOUR_STATUS_FIELD_ID",
+    "Size": "YOUR_SIZE_FIELD_ID",
+    "Product": "YOUR_PRODUCT_FIELD_ID",
+    "Type": "YOUR_TYPE_FIELD_ID",
+    "Maturity": "YOUR_MATURITY_FIELD_ID",
+    "Area": "YOUR_AREA_FIELD_ID",
+    "Priority": "YOUR_PRIORITY_FIELD_ID"
+  }
+}

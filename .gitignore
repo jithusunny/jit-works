@@ -6,3 +6,4 @@ dist/
 *.log
 .astro/
 .wrangler/
+.work/config.local.json

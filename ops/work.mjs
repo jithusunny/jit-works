@@ -8,6 +8,7 @@ import {
   field,
   issueRef,
   matchingItems,
+  mergeWorkConfig,
   normalizeRestItem,
   planRows,
   sameTitle,
@@ -17,7 +18,8 @@ import {
 } from './work-lib.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const CONFIG_PATH = resolve(ROOT, '.work/config.json');
+const PUBLIC_CONFIG_PATH = resolve(ROOT, '.work/config.json');
+const LOCAL_CONFIG_PATH = resolve(ROOT, '.work/config.local.json');
 let metadataCache;
 
 function die(message, code = 1) {
@@ -53,12 +55,16 @@ function gh(args, options) {
 }
 
 function config() {
-  if (!existsSync(CONFIG_PATH)) throw new Error(`missing ${CONFIG_PATH}`);
-  const value = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
-  for (const key of ['owner', 'project', 'productRepo']) {
-    if (!value[key]) throw new Error(`work config is missing ${key}`);
+  if (!existsSync(PUBLIC_CONFIG_PATH)) throw new Error('missing tracked .work/config.json');
+  const publicConfig = JSON.parse(readFileSync(PUBLIC_CONFIG_PATH, 'utf8'));
+  if (!existsSync(LOCAL_CONFIG_PATH)) {
+    throw new Error(
+      'local work connection is not configured; copy .work/config.local.example.json to '
+      + '.work/config.local.json and add values from a GitHub Project you can access',
+    );
   }
-  return value;
+  const localConfig = JSON.parse(readFileSync(LOCAL_CONFIG_PATH, 'utf8'));
+  return mergeWorkConfig(publicConfig, localConfig);
 }
 
 function ownerArgs(value) {
@@ -411,8 +417,12 @@ audit                          Fail on WIP, field, size, state, or retired-plan 
 }
 
 function main() {
-  const value = config();
   const [name = 'brief', ...args] = process.argv.slice(2);
+  if (name === 'help' || name === '--help' || name === '-h') {
+    help();
+    return;
+  }
+  const value = config();
   if (name === 'brief') brief(value);
   else if (name === 'plan') showPlan(value, args);
   else if (name === 'search') search(value, args);
@@ -420,7 +430,6 @@ function main() {
   else if (name === 'start') start(value, args);
   else if (name === 'finish') finish(value, args);
   else if (name === 'audit') audit(value);
-  else if (name === 'help' || name === '--help' || name === '-h') help();
   else throw new Error(`Unknown command: ${name}`);
 }
 

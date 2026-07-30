@@ -2,6 +2,33 @@ function text(value) {
   return String(value || '').trim();
 }
 
+const LOCAL_CONNECTION_CONFIG_KEYS = ['owner', 'ownerType', 'project', 'fieldIds'];
+
+export function mergeWorkConfig(publicConfig = {}, localConfig = {}) {
+  const leakedKeys = LOCAL_CONNECTION_CONFIG_KEYS.filter((key) => Object.hasOwn(publicConfig, key));
+  if (leakedKeys.length) {
+    throw new Error(`tracked work config contains local connection keys: ${leakedKeys.join(', ')}`);
+  }
+
+  for (const key of ['productRepo', 'productName']) {
+    if (!publicConfig[key]) throw new Error(`tracked work config is missing ${key}`);
+  }
+  for (const key of ['owner', 'project']) {
+    if (!localConfig[key]) throw new Error(`local work config is missing ${key}`);
+  }
+  if (!Object.keys(localConfig.fieldIds || {}).length) {
+    throw new Error('local work config is missing fieldIds');
+  }
+
+  return {
+    ...publicConfig,
+    owner: localConfig.owner,
+    ownerType: localConfig.ownerType || 'user',
+    project: localConfig.project,
+    fieldIds: localConfig.fieldIds,
+  };
+}
+
 export function field(item, name) {
   const value = item[name] ?? item[name.toLowerCase()] ?? item.fieldValues?.find?.((entry) => entry.field?.name === name)?.name;
   return typeof value === 'string' ? value : value?.name || '';
