@@ -68,8 +68,11 @@ Briefly nudge when work bypasses the active item, duplicates status, reopens set
   `npm install --include=dev`, otherwise devDependencies are silently omitted.
 - Dev server: `npm run dev` (the Cloudflare adapter does not support `astro preview`).
 - Build: `npm run build` · Type-check: `npx astro check`
-- Deploy: `npm run deploy` (Cloudflare Worker with static assets; config in `wrangler.jsonc`,
-  currently on workers.dev until the jit.works zone is onboarded to the Cloudflare account).
+- Deploy: `npm run deploy` (Cloudflare Worker with static assets; config in `wrangler.jsonc`). The
+  approved production target is the existing `jit-works` Worker at `jit.works`. After relevant
+  checks pass and a change is merged, deploy there routinely without a separate owner approval,
+  then run production health checks. Ask before changing the Worker, domain, DNS, visibility,
+  privacy, security boundary, or deployment target.
 - Work status: `npm run work -- brief`
 - Work-system tests: `npm run test:work`
 - Full current test suite: `npm test`
