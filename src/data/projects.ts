@@ -1,4 +1,4 @@
-// Single source of truth for the four selected projects (issue #3).
+// Single source of truth for the selected projects.
 // Reused verbatim by both the main page and the /upwork surface.
 //
 // The card is a glance surface: it carries a hook (problem + twist), one plain-language
@@ -231,6 +231,48 @@ export const projects: Project[] = [
       'Fresh procedural track every race',
       'Couch 2-player and 1v1 online',
       'Desktop and mobile, no install',
+    ],
+  },
+  {
+    id: 'sunny-varkey',
+    no: '05',
+    title: 'Sunny Varkey K',
+    category: 'Publishing',
+    status: 'Live',
+    statusTone: 'live',
+    tagline: 'Four decades of English teaching, rebuilt into a clear and searchable permanent home.',
+    hardPart: '291 published notes and 200 original media files were recovered, checked, and rebuilt without the old CMS.',
+    screens: ['01 · Home', '02 · Notes archive', '03 · Book'],
+    media: [
+      {
+        src: '/assets/projects/sunny-varkey/home.png',
+        alt: 'Sunny Varkey K website home page introducing his English teaching, writing, and latest video lesson.',
+      },
+      {
+        src: '/assets/projects/sunny-varkey/notes.png',
+        alt: 'Sunny Varkey K searchable archive containing 291 English grammar and usage notes.',
+      },
+      {
+        src: '/assets/projects/sunny-varkey/book.png',
+        alt: 'Sunny Varkey K books page presenting the SVK English Digest and its available formats.',
+      },
+    ],
+    overview:
+      'Years of English lessons, books, teaching photographs, and music lived inside a former WordPress site. The rebuild gives that body of work a durable identity, a readable structure, and a searchable 291-note archive while keeping Sunny\'s original material intact.',
+    tech:
+      'A custom static publishing pipeline combines curated page data with normalized WordPress exports. It checks every published note, archived media file, metadata record, draft boundary, and route before deploying a self-contained site to Cloudflare Pages.',
+    stack: ['Static publishing', 'Content migration', 'Cloudflare Pages'],
+    role: 'Design, migration + build',
+    period: '2026',
+    portfolioReviewedAt: '2026-08-11',
+    href: 'https://sunnyvarkeyk.com',
+    ctaLabel: 'Visit the site',
+    // Audited 2026-08-11: the live site exposes contact, social, YouTube, and Amazon paths.
+    upworkLinkable: false,
+    features: [
+      'Searchable archive of 291 English notes',
+      'Responsive sections for lessons, books, and teaching',
+      'Integrity checks for content, media, and private drafts',
     ],
   },
 ];
