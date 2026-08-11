@@ -5,7 +5,7 @@ jit.works is the public portfolio and studio website for [Jithu Sunny](https://g
 ## Status
 
 The first portfolio release is live at [jit.works](https://jit.works): an Astro + Preact site showing
-four selected projects, with a permanent Upwork-safe `/upwork` surface. Project galleries render
+five selected projects, with a permanent Upwork-safe `/upwork` surface. Project galleries render
 approved public media when available and keep an intentional placeholder while an evidence pack is
 pending. Stack rationale: [docs/adr/0001-stack-astro-cloudflare.md](docs/adr/0001-stack-astro-cloudflare.md).
 
