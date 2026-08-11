@@ -887,7 +887,7 @@ export default function Showcase({ variant }: Props) {
                         </button>
                       </div>
                       {!isMobile && (
-                        <div onPointerDown={(e) => e.stopPropagation()} style={sx({ flex: 'none', display: 'flex', gap: '8px', alignItems: 'center' })}>
+                        <div class="scroll-slim" onPointerDown={(e) => e.stopPropagation()} style={sx({ flex: 'none', display: 'flex', gap: '8px', alignItems: 'center', overflowX: 'auto', padding: '3px' })}>
                           {p.screens.map((label, ti) => (
                             <button
                               key={ti}

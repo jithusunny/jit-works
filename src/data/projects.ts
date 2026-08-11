@@ -242,19 +242,38 @@ export const projects: Project[] = [
     statusTone: 'live',
     tagline: 'Four decades of English teaching, rebuilt into a clear and searchable permanent home.',
     hardPart: '291 published notes and 200 original media files were recovered, checked, and rebuilt without the old CMS.',
-    screens: ['01 · Home', '02 · Notes archive', '03 · Book'],
+    screens: [
+      '01 · Home',
+      '02 · About',
+      '03 · Video lessons',
+      '04 · Books',
+      '05 · Music',
+      '06 · English notes',
+    ],
     media: [
       {
         src: '/assets/projects/sunny-varkey/home.png',
         alt: 'Sunny Varkey K website home page introducing his English teaching, writing, and latest video lesson.',
       },
       {
-        src: '/assets/projects/sunny-varkey/notes.png',
-        alt: 'Sunny Varkey K searchable archive containing 291 English grammar and usage notes.',
+        src: '/assets/projects/sunny-varkey/about.png',
+        alt: 'Sunny Varkey K website about page showing his biography beside a teaching photograph gallery.',
+      },
+      {
+        src: '/assets/projects/sunny-varkey/videos.png',
+        alt: 'Sunny Varkey K video lessons page presenting his latest practical English lesson and YouTube channel.',
       },
       {
         src: '/assets/projects/sunny-varkey/book.png',
         alt: 'Sunny Varkey K books page presenting the SVK English Digest and its available formats.',
+      },
+      {
+        src: '/assets/projects/sunny-varkey/music.png',
+        alt: 'Sunny Varkey K music page presenting his personal introduction and a gallery of musical associations.',
+      },
+      {
+        src: '/assets/projects/sunny-varkey/notes.png',
+        alt: 'Sunny Varkey K searchable archive containing 291 English grammar and usage notes.',
       },
     ],
     overview:
