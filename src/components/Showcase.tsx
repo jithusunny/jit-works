@@ -3,6 +3,16 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { JSX } from 'preact';
 import { projects, DOT_COLOR, type Project } from '../data/projects';
 import {
+  MAX_ZOOM,
+  MIN_ZOOM,
+  clamp,
+  clampPan,
+  stepZoom,
+  wheelZoom,
+  zoomAroundPoint,
+  type Point,
+} from './lightboxGeometry';
+import {
   UPWORK_URL,
   AUTOPLAY_SECONDS,
   PHOTO_OPACITY_DESKTOP,
@@ -202,25 +212,288 @@ function MediaVisual({
   );
 }
 
-/** Full-screen media viewer: ← → / swipe between a project's media, Esc / × / backdrop to close. */
+function ZoomIcon({ sign }: { sign: 'minus' | 'plus' }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="m15.5 15.5 5 5" />
+      <path d="M7.5 10.5h6" />
+      {sign === 'plus' && <path d="M10.5 7.5v6" />}
+    </svg>
+  );
+}
+
+type Gesture = {
+  mode: 'idle' | 'swipe' | 'pan' | 'pinch';
+  start: Point;
+  basePan: Point;
+  moved: number;
+  startDistance: number;
+  startZoom: number;
+  startMidpoint: Point;
+};
+
+/** Full-screen media viewer with intrinsic sizing, stepped zoom, pan, pinch, and clear navigation. */
 function Lightbox({
-  project, index, onClose, onStep,
+  project, index, isMobile, onClose, onStep,
 }: {
   project: Project;
   index: number;
+  isMobile: boolean;
   onClose: () => void;
   onStep: (d: number) => void;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const drag = useRef<{ x: number; on: boolean }>({ x: 0, on: false });
+  const stageRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const pointers = useRef(new Map<number, Point>());
+  const gesture = useRef<Gesture>({
+    mode: 'idle', start: { x: 0, y: 0 }, basePan: { x: 0, y: 0 }, moved: 0,
+    startDistance: 1, startZoom: MIN_ZOOM, startMidpoint: { x: 0, y: 0 },
+  });
+  const lastTap = useRef<{ time: number; point: Point } | null>(null);
+  const view = useRef({ zoom: MIN_ZOOM, pan: { x: 0, y: 0 } });
+  const fittedSize = useRef({ width: 0, height: 0 });
+  const [zoom, setZoom] = useState(MIN_ZOOM);
+  const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
+  const [fit, setFit] = useState({ width: 0, height: 0 });
   const total = project.screens.length;
+  const asset = project.media?.[index];
+  const zoomable = Boolean(asset && asset.kind !== 'video');
+
+  function mediaSize() {
+    return fittedSize.current.width && fittedSize.current.height
+      ? fittedSize.current
+      : { width: imageRef.current?.offsetWidth ?? 0, height: imageRef.current?.offsetHeight ?? 0 };
+  }
+
+  function viewportSize() {
+    return { width: stageRef.current?.clientWidth ?? 0, height: stageRef.current?.clientHeight ?? 0 };
+  }
+
+  function setView(nextZoom: number, nextPan: Point) {
+    const safeZoom = clamp(nextZoom, MIN_ZOOM, MAX_ZOOM);
+    const media = mediaSize();
+    const viewport = viewportSize();
+    const safePan = media.width && media.height && viewport.width && viewport.height
+      ? clampPan(nextPan, viewport, media, safeZoom)
+      : { x: 0, y: 0 };
+    view.current = { zoom: safeZoom, pan: safePan };
+    setZoom(safeZoom);
+    setPan(safePan);
+  }
+
+  function resetView() {
+    view.current = { zoom: MIN_ZOOM, pan: { x: 0, y: 0 } };
+    setZoom(MIN_ZOOM);
+    setPan({ x: 0, y: 0 });
+    pointers.current.clear();
+    gesture.current.mode = 'idle';
+  }
+
+  function updateFittedSize() {
+    const image = imageRef.current;
+    const viewport = viewportSize();
+    if (!image?.naturalWidth || !image.naturalHeight || !viewport.width || !viewport.height) return;
+    const scale = Math.min(1, viewport.width / image.naturalWidth, viewport.height / image.naturalHeight);
+    const next = {
+      width: Math.round(image.naturalWidth * scale),
+      height: Math.round(image.naturalHeight * scale),
+    };
+    fittedSize.current = next;
+    setFit(next);
+    const safePan = clampPan(view.current.pan, viewport, next, view.current.zoom);
+    view.current = { ...view.current, pan: safePan };
+    setPan(safePan);
+  }
+
+  function adjustZoom(direction: -1 | 1) {
+    const nextZoom = stepZoom(view.current.zoom, direction);
+    setView(nextZoom, nextZoom === MIN_ZOOM ? { x: 0, y: 0 } : view.current.pan);
+  }
+
+  function toggleDetailZoom(point?: Point) {
+    const nextZoom = view.current.zoom === MIN_ZOOM ? 2 : MIN_ZOOM;
+    if (!point || nextZoom === MIN_ZOOM) {
+      setView(nextZoom, { x: 0, y: 0 });
+      return;
+    }
+    setView(nextZoom, zoomAroundPoint({
+      point,
+      viewport: viewportSize(),
+      media: mediaSize(),
+      pan: view.current.pan,
+      fromZoom: view.current.zoom,
+      toZoom: nextZoom,
+    }));
+  }
+
+  function localPoint(e: { clientX: number; clientY: number }): Point {
+    const rect = stageRef.current?.getBoundingClientRect();
+    return { x: e.clientX - (rect?.left ?? 0), y: e.clientY - (rect?.top ?? 0) };
+  }
+
+  const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
+  const midpoint = (a: Point, b: Point): Point => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+  function startPinch() {
+    const [a, b] = [...pointers.current.values()];
+    if (!a || !b) return;
+    gesture.current = {
+      mode: 'pinch',
+      start: a,
+      basePan: view.current.pan,
+      moved: 0,
+      startDistance: Math.max(1, distance(a, b)),
+      startZoom: view.current.zoom,
+      startMidpoint: midpoint(a, b),
+    };
+  }
+
+  function onMediaPointerDown(e: PointerEvent) {
+    if (!zoomable) return;
+    const point = localPoint(e);
+    pointers.current.set(e.pointerId, point);
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch {}
+    if (pointers.current.size >= 2) {
+      startPinch();
+      return;
+    }
+    gesture.current = {
+      mode: view.current.zoom > MIN_ZOOM ? 'pan' : 'swipe',
+      start: point,
+      basePan: view.current.pan,
+      moved: 0,
+      startDistance: 1,
+      startZoom: view.current.zoom,
+      startMidpoint: point,
+    };
+  }
+
+  function onMediaPointerMove(e: PointerEvent) {
+    if (!pointers.current.has(e.pointerId) || !zoomable) return;
+    const point = localPoint(e);
+    pointers.current.set(e.pointerId, point);
+    const active = gesture.current;
+
+    if (active.mode === 'pinch' && pointers.current.size >= 2) {
+      const [a, b] = [...pointers.current.values()];
+      if (!a || !b) return;
+      const currentMidpoint = midpoint(a, b);
+      const nextZoom = clamp(active.startZoom * distance(a, b) / active.startDistance, MIN_ZOOM, MAX_ZOOM);
+      const viewport = viewportSize();
+      const centre = { x: viewport.width / 2, y: viewport.height / 2 };
+      const mediaPoint = {
+        x: (active.startMidpoint.x - centre.x - active.basePan.x) / active.startZoom,
+        y: (active.startMidpoint.y - centre.y - active.basePan.y) / active.startZoom,
+      };
+      setView(nextZoom, {
+        x: currentMidpoint.x - centre.x - mediaPoint.x * nextZoom,
+        y: currentMidpoint.y - centre.y - mediaPoint.y * nextZoom,
+      });
+      active.moved = Math.max(active.moved, distance(currentMidpoint, active.startMidpoint));
+      return;
+    }
+
+    const dx = point.x - active.start.x;
+    const dy = point.y - active.start.y;
+    active.moved = Math.max(active.moved, Math.hypot(dx, dy));
+    if (active.mode === 'pan') {
+      setView(view.current.zoom, { x: active.basePan.x + dx, y: active.basePan.y + dy });
+    }
+  }
+
+  function registerDoubleTap(e: PointerEvent, point: Point, moved: number) {
+    if (e.pointerType !== 'touch' || moved > 9) return false;
+    const now = performance.now();
+    const previous = lastTap.current;
+    lastTap.current = { time: now, point };
+    if (!previous || now - previous.time > 320 || distance(previous.point, point) > 28) return false;
+    lastTap.current = null;
+    toggleDetailZoom(point);
+    return true;
+  }
+
+  function onMediaPointerUp(e: PointerEvent) {
+    const point = localPoint(e);
+    const active = gesture.current;
+    pointers.current.delete(e.pointerId);
+
+    if (active.mode === 'pinch') {
+      if (pointers.current.size === 1) {
+        const remaining = [...pointers.current.values()][0];
+        gesture.current = {
+          ...active, mode: 'pan', start: remaining, basePan: view.current.pan, moved: 0,
+        };
+      } else {
+        gesture.current.mode = 'idle';
+      }
+      return;
+    }
+
+    if (registerDoubleTap(e, point, active.moved)) {
+      gesture.current.mode = 'idle';
+      return;
+    }
+
+    if (active.mode === 'swipe') {
+      const dx = point.x - active.start.x;
+      const dy = point.y - active.start.y;
+      if (Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.15) onStep(dx < 0 ? 1 : -1);
+    }
+    gesture.current.mode = 'idle';
+  }
+
+  function onMediaPointerCancel(e: PointerEvent) {
+    pointers.current.delete(e.pointerId);
+    if (!pointers.current.size) gesture.current.mode = 'idle';
+  }
+
+  function onMediaWheel(e: WheelEvent) {
+    if (!zoomable) return;
+    e.preventDefault();
+    const nextZoom = wheelZoom(view.current.zoom, e.deltaY);
+    const point = localPoint(e);
+    const nextPan = nextZoom === MIN_ZOOM
+      ? { x: 0, y: 0 }
+      : zoomAroundPoint({
+          point,
+          viewport: viewportSize(),
+          media: mediaSize(),
+          pan: view.current.pan,
+          fromZoom: view.current.zoom,
+          toZoom: nextZoom,
+        });
+    setView(nextZoom, nextPan);
+  }
+
+  useEffect(() => {
+    fittedSize.current = { width: 0, height: 0 };
+    setFit({ width: 0, height: 0 });
+    resetView();
+  }, [project.id, index]);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    const onResize = () => updateFittedSize();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(onResize);
+    if (stage) observer?.observe(stage);
+    window.addEventListener('resize', onResize);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', onResize);
+    };
+  }, [project.id, index, zoomable]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.preventDefault(); onClose(); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); onStep(1); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); onStep(-1); }
+      else if (zoomable && (e.key === '+' || e.key === '=')) { e.preventDefault(); adjustZoom(1); }
+      else if (zoomable && e.key === '-') { e.preventDefault(); adjustZoom(-1); }
+      else if (zoomable && e.key === '0') { e.preventDefault(); resetView(); }
       else if (e.key === 'Tab' && dialogRef.current) {
         const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
           'a[href], button, video[controls], [tabindex]:not([tabindex="-1"])',
@@ -240,12 +513,15 @@ function Lightbox({
     document.addEventListener('keydown', onKey);
     const t = setTimeout(() => { try { closeRef.current?.focus(); } catch {} }, 30);
     return () => { document.removeEventListener('keydown', onKey); clearTimeout(t); };
-  }, [onClose, onStep]);
+  }, [onClose, onStep, zoomable]);
 
   const arrow = (side: 'left' | 'right'): JSX.CSSProperties => sx({
     position: 'absolute', [side]: 'clamp(8px,2vw,28px)', top: '50%', transform: 'translateY(-50%)', zIndex: 2,
     width: '52px', height: '52px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(28,26,20,0.55)', backdropFilter: 'blur(6px)', color: '#F1F7F0', fontSize: '26px', lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: '3px',
   });
+
+  const navButton = sx({ minHeight: '48px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.26)', background: 'rgba(28,26,20,0.55)', color: '#F1F7F0', fontFamily: 'var(--font-ui)', fontWeight: 650, fontSize: '14px', cursor: 'pointer', padding: '0 18px' });
+  const zoomButton = (disabled: boolean) => sx({ width: '48px', height: '48px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.28)', background: 'rgba(28,26,20,0.62)', color: '#F1F7F0', display: 'grid', placeItems: 'center', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.42 : 1 });
 
   return (
     <div
@@ -253,34 +529,68 @@ function Lightbox({
       role="dialog"
       aria-modal="true"
       aria-label={project.title + ' media'}
+      aria-describedby="lightbox-instructions"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onPointerDown={(e) => { drag.current = { x: e.clientX, on: true }; }}
-      onPointerUp={(e) => {
-        if (!drag.current.on) return;
-        drag.current.on = false;
-        const dx = e.clientX - drag.current.x;
-        if (dx <= -50) onStep(1);
-        else if (dx >= 50) onStep(-1);
-      }}
-      style={sx({ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(18,17,13,0.86)', backdropFilter: 'blur(6px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px,5vw,64px)', animation: 'fadeIn 0.2s ease', touchAction: 'pan-y' })}
+      style={sx({ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(18,17,13,0.9)', backdropFilter: 'blur(6px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 'calc(62px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))' : 'clamp(18px,2.2vw,34px) clamp(72px,6vw,112px)', animation: 'fadeIn 0.2s ease', overflow: 'hidden' })}
     >
-      <button ref={closeRef} onClick={onClose} aria-label="Close" style={sx({ position: 'absolute', top: 'clamp(12px,2vw,24px)', right: 'clamp(12px,2vw,24px)', zIndex: 2, width: '44px', height: '44px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(28,26,20,0.55)', backdropFilter: 'blur(6px)', color: '#F1F7F0', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' })}>&#10005;</button>
+      <p id="lightbox-instructions" style={sx({ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 })}>
+        Use the zoom buttons, plus and minus keys, mouse wheel, trackpad, pinch, or double tap to inspect the screenshot. Drag while zoomed to move around it.
+      </p>
+      <button ref={closeRef} onClick={onClose} aria-label="Close" style={sx({ position: 'absolute', top: 'calc(clamp(10px,2vw,22px) + env(safe-area-inset-top))', right: 'clamp(10px,2vw,22px)', zIndex: 3, width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(28,26,20,0.62)', backdropFilter: 'blur(6px)', color: '#F1F7F0', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' })}>&#10005;</button>
 
-      {total > 1 && (
+      {!isMobile && total > 1 && (
         <>
           <button onClick={() => onStep(-1)} aria-label="Previous media" style={arrow('left')}>&lsaquo;</button>
           <button onClick={() => onStep(1)} aria-label="Next media" style={arrow('right')}>&rsaquo;</button>
         </>
       )}
 
-      <figure style={sx({ margin: 0, width: 'min(96vw, calc(82vh * 16 / 9))', maxWidth: '1400px', display: 'flex', flexDirection: 'column', gap: '14px' })}>
-        <div style={sx({ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: '#FFFFFF', borderRadius: 'clamp(10px,1.2vw,16px)', boxShadow: '0 40px 90px -30px rgba(0,0,0,0.6)', overflow: 'hidden' })}>
-          <MediaVisual project={project} index={index} mode="lightbox" />
+      <figure style={sx({ margin: 0, width: '100%', height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: 'minmax(0,1fr) auto auto auto', gap: isMobile ? '8px' : '10px' })}>
+        <div
+          ref={stageRef}
+          onPointerDown={onMediaPointerDown}
+          onPointerMove={onMediaPointerMove}
+          onPointerUp={onMediaPointerUp}
+          onPointerCancel={onMediaPointerCancel}
+          onWheel={onMediaWheel}
+          onDblClick={(e) => zoomable && toggleDetailZoom(localPoint(e))}
+          style={sx({ position: 'relative', minWidth: 0, minHeight: 0, display: 'grid', placeItems: 'center', overflow: 'hidden', touchAction: zoomable ? 'none' : 'auto', cursor: zoomable && zoom > MIN_ZOOM ? 'grab' : zoomable ? 'zoom-in' : 'default' })}
+        >
+          {zoomable && asset ? (
+            <img
+              key={asset.src}
+              ref={imageRef}
+              src={asset.src}
+              alt={asset.alt}
+              draggable={false}
+              loading="eager"
+              decoding="async"
+              onLoad={() => { resetView(); requestAnimationFrame(updateFittedSize); }}
+              style={sx({ display: 'block', width: fit.width ? fit.width + 'px' : 'auto', height: fit.height ? fit.height + 'px' : 'auto', maxWidth: fit.width ? 'none' : '100%', maxHeight: fit.height ? 'none' : '100%', objectFit: 'contain', background: '#F6F7F3', borderRadius: 'clamp(8px,1vw,14px)', boxShadow: '0 32px 80px -28px rgba(0,0,0,0.72)', transform: `translate3d(${pan.x}px,${pan.y}px,0) scale(${zoom})`, transformOrigin: 'center', transition: gesture.current.mode === 'idle' ? 'transform .16s ease' : 'none', willChange: zoom > MIN_ZOOM ? 'transform' : 'auto', userSelect: 'none' })}
+            />
+          ) : (
+            <div style={sx({ position: 'relative', width: 'min(100%, calc((100dvh - 190px) * 16 / 9))', aspectRatio: '16 / 9', maxHeight: '100%', overflow: 'hidden', background: '#0B0E15', borderRadius: 'clamp(8px,1vw,14px)', boxShadow: '0 32px 80px -28px rgba(0,0,0,0.72)' })}>
+              <MediaVisual project={project} index={index} mode="lightbox" />
+            </div>
+          )}
         </div>
         <figcaption style={sx({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', fontFamily: 'var(--font-mono)', fontSize: '12.5px', letterSpacing: '0.04em', color: 'rgba(241,247,240,0.82)' })}>
-          <span>{project.title} · {project.screens[index]}</span>
-          <span>{index + 1} / {total}</span>
+          <span style={sx({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>{project.title} · {project.screens[index]}</span>
+          <span style={sx({ flex: 'none' })}>{index + 1} / {total}</span>
         </figcaption>
+        {zoomable && (
+          <div role="group" aria-label="Screenshot zoom" style={sx({ justifySelf: 'center', display: 'grid', gridTemplateColumns: '48px 64px 48px', alignItems: 'center', gap: '5px', padding: '4px', borderRadius: '15px', background: 'rgba(12,13,11,0.52)' })}>
+            <button onClick={() => adjustZoom(-1)} disabled={zoom <= MIN_ZOOM} aria-label="Zoom out" style={zoomButton(zoom <= MIN_ZOOM)}><ZoomIcon sign="minus" /></button>
+            <output aria-live="polite" aria-label={'Zoom ' + Math.round(zoom * 100) + ' percent'} style={sx({ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'rgba(241,247,240,0.9)' })}>{Math.round(zoom * 100)}%</output>
+            <button onClick={() => adjustZoom(1)} disabled={zoom >= MAX_ZOOM} aria-label="Zoom in" style={zoomButton(zoom >= MAX_ZOOM)}><ZoomIcon sign="plus" /></button>
+          </div>
+        )}
+        {isMobile && total > 1 && (
+          <div style={sx({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' })}>
+            <button onClick={() => onStep(-1)} aria-label="Previous media" style={navButton}>&lsaquo; Previous</button>
+            <button onClick={() => onStep(1)} aria-label="Next media" style={navButton}>Next &rsaquo;</button>
+          </div>
+        )}
       </figure>
     </div>
   );
@@ -964,6 +1274,7 @@ export default function Showcase({ variant }: Props) {
         <Lightbox
           project={projects.find((p) => p.id === lightbox.id) || projects[0]}
           index={lightbox.i}
+          isMobile={isMobile}
           onClose={closeLightbox}
           onStep={stepLightbox}
         />
