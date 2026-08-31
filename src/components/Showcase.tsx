@@ -252,7 +252,6 @@ function Lightbox({
     mode: 'idle', start: { x: 0, y: 0 }, basePan: { x: 0, y: 0 }, moved: 0,
     startDistance: 1, startZoom: MIN_ZOOM, startMidpoint: { x: 0, y: 0 },
   });
-  const lastTap = useRef<{ time: number; point: Point } | null>(null);
   const view = useRef({ zoom: MIN_ZOOM, pan: { x: 0, y: 0 } });
   const fittedSize = useRef({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(MIN_ZOOM);
@@ -404,17 +403,6 @@ function Lightbox({
     }
   }
 
-  function registerDoubleTap(e: PointerEvent, point: Point, moved: number) {
-    if (e.pointerType !== 'touch' || moved > 9) return false;
-    const now = performance.now();
-    const previous = lastTap.current;
-    lastTap.current = { time: now, point };
-    if (!previous || now - previous.time > 320 || distance(previous.point, point) > 28) return false;
-    lastTap.current = null;
-    toggleDetailZoom(point);
-    return true;
-  }
-
   function onMediaPointerUp(e: PointerEvent) {
     const point = localPoint(e);
     const active = gesture.current;
@@ -432,7 +420,8 @@ function Lightbox({
       return;
     }
 
-    if (registerDoubleTap(e, point, active.moved)) {
+    if (active.moved <= 9) {
+      toggleDetailZoom(point);
       gesture.current.mode = 'idle';
       return;
     }
@@ -534,7 +523,7 @@ function Lightbox({
       style={sx({ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(18,17,13,0.9)', backdropFilter: 'blur(6px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 'calc(62px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))' : 'clamp(18px,2.2vw,34px) clamp(72px,6vw,112px)', animation: 'fadeIn 0.2s ease', overflow: 'hidden' })}
     >
       <p id="lightbox-instructions" style={sx({ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 })}>
-        Use the zoom buttons, plus and minus keys, mouse wheel, trackpad, pinch, or double tap to inspect the screenshot. Drag while zoomed to move around it.
+        Click or tap the screenshot, or use the zoom buttons, plus and minus keys, mouse wheel, trackpad, or pinch to inspect it. Drag while zoomed to move around it.
       </p>
       <button ref={closeRef} onClick={onClose} aria-label="Close" style={sx({ position: 'absolute', top: 'calc(clamp(10px,2vw,22px) + env(safe-area-inset-top))', right: 'clamp(10px,2vw,22px)', zIndex: 3, width: '48px', height: '48px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(28,26,20,0.62)', backdropFilter: 'blur(6px)', color: '#F1F7F0', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' })}>&#10005;</button>
 
@@ -553,7 +542,6 @@ function Lightbox({
           onPointerUp={onMediaPointerUp}
           onPointerCancel={onMediaPointerCancel}
           onWheel={onMediaWheel}
-          onDblClick={(e) => zoomable && toggleDetailZoom(localPoint(e))}
           style={sx({ position: 'relative', minWidth: 0, minHeight: 0, display: 'grid', placeItems: 'center', overflow: 'hidden', touchAction: zoomable ? 'none' : 'auto', cursor: zoomable && zoom > MIN_ZOOM ? 'grab' : zoomable ? 'zoom-in' : 'default' })}
         >
           {zoomable && asset ? (

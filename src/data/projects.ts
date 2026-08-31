@@ -241,7 +241,7 @@ export const projects: Project[] = [
     status: 'Live',
     statusTone: 'live',
     tagline: 'Four decades of English teaching, rebuilt into a clear and searchable permanent home.',
-    hardPart: '291 published notes and 200 original media files were recovered, checked, and rebuilt without the old CMS.',
+    hardPart: 'The old site became a fast, durable archive where every note, page, and media file has a checked place.',
     screens: [
       '01 · Home',
       '02 · About',
@@ -292,6 +292,48 @@ export const projects: Project[] = [
       'Searchable archive of 291 English notes',
       'Responsive sections for lessons, books, and teaching',
       'Integrity checks for content, media, and private drafts',
+    ],
+  },
+  {
+    id: 'renz-world',
+    no: '06',
+    title: 'Renz World',
+    category: 'Portfolio',
+    status: 'Live',
+    statusTone: 'live',
+    tagline: 'A playful portfolio where Renz\'s origami takes the lead.',
+    hardPart: 'The fold deck turns six real photographs into a tactile showcase that works with touch, mouse, or keyboard.',
+    screens: ['01 · Fold deck', '02 · Origami collection', '03 · Mobile collection'],
+    media: [
+      {
+        src: '/assets/projects/renz-world/fold-deck.png',
+        alt: 'Renz World fold deck showing an orange paper scorpion with swipe, arrow, and direct-selection controls.',
+      },
+      {
+        src: '/assets/projects/renz-world/origami-collection.png',
+        alt: 'Renz World desktop origami collection showing paper scorpion, spider, and Pegasus photographs.',
+      },
+      {
+        src: '/assets/projects/renz-world/origami-mobile.png',
+        alt: 'Renz World phone collection showing a close view of an orange paper scorpion.',
+      },
+    ],
+    overview:
+      'Renz World gives Renz one lively place to share what he enjoys creating. The first release puts origami front and centre, pairing his own introduction with six photographs and a direct path through the full collection.',
+    tech:
+      'A static Astro build turns each photograph into responsive image formats before deployment. The fold deck, viewer, and reveal effects are small enhancements with complete touch, keyboard, reduced-motion, and no-JavaScript paths.',
+    stack: ['Astro', 'Responsive images', 'Accessible motion'],
+    role: 'Design + build',
+    period: '2026',
+    portfolioReviewedAt: '2026-08-31',
+    href: 'https://renz.world',
+    ctaLabel: 'Visit the site',
+    // Audited 2026-08-31: the footer links to jit.works, creating an off-platform contact path.
+    upworkLinkable: false,
+    features: [
+      'Interactive fold deck built from six origami photographs',
+      'Responsive images for phone, tablet, and desktop',
+      'Touch, keyboard, reduced-motion, and no-JavaScript support',
     ],
   },
 ];
