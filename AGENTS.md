@@ -62,7 +62,7 @@ Briefly nudge when work bypasses the active item, duplicates status, reopens set
   - `src/pages/` — routes (`index.astro` = main, `upwork.astro` = the Upwork-safe surface).
   - `src/components/Showcase.tsx` — the single Preact island (header, hero, carousel, overlays);
     both routes render it with a `variant` prop.
-  - `src/data/` — `projects.ts` (the four projects, single source of truth) and `site.ts` (config,
+  - `src/data/` — `projects.ts` (the selected projects, single source of truth) and `site.ts` (config,
     Upwork URL). `src/layouts/Base.astro` holds fonts, grain, tokens. `public/assets/` holds images.
 - Because `NODE_ENV=production` is set in this environment, install dev tooling with
   `npm install --include=dev`, otherwise devDependencies are silently omitted.
