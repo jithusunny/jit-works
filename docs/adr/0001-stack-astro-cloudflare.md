@@ -6,9 +6,9 @@
 
 ## Context
 
-The first jit.works release (#3) is a concise, high-fidelity portfolio: one interactive page plus a
-permanent, self-contained `/upwork` surface that reuses the same content. The issue asks for the
-"smallest suitable application stack" that stays fast and legible on mobile.
+The first jit.works release (#3) is a concise, high-fidelity portfolio built around one interactive
+page. The issue asks for the "smallest suitable application stack" that stays fast and legible on
+mobile.
 
 The owner also set a forward direction the stack must not foreclose: project status that updates as
 commits land, changing stats, privacy-gated analytics (Umami), scheduling (Calendly), and a live
@@ -24,8 +24,8 @@ Use **Astro** with the **`@astrojs/cloudflare` adapter** and a single **Preact**
 - The whole interactive app (header, hero, carousel, overlays) is one Preact island hydrated
   `client:load`. Preact is React-compatible, so the design export's React logic ports directly at
   ~11 kB gzip.
-- Both routes render the same `Showcase` component with a `variant` prop, so `/` and `/upwork` share
-  one implementation and one data source (`src/data/projects.ts`).
+- The public route renders one `Showcase` component backed by one project data source
+  (`src/data/projects.ts`). Contact choices are configured separately in `src/data/site.ts`.
 
 ## Consequences
 
@@ -43,9 +43,9 @@ Use **Astro** with the **`@astrojs/cloudflare` adapter** and a single **Preact**
 
 ## Evidence
 
-- `npm run build` prerenders `/` and `/upwork` to static HTML; client island 47.7 kB / 13.0 kB gzip
-  with the project media viewer.
+- `npm run build` prerenders `/` to static HTML. The retired `/upwork` route is a permanent redirect
+  to `/` using Cloudflare Static Assets redirects. The client island includes the project media
+  viewer and direct-contact chooser.
 - `astro check` passes with 0 errors.
-- Headless-Chrome renders at 390×844, 1440×900, and 1920×1080 reproduce the design's hero, carousel,
-  and card anatomy on both routes, and the `variant` prop correctly switches the primary action and
-  the contact-boundary link gating.
+- Headless-Chromium renders at 390×844 and 1440×1000 reproduce the design's hero, carousel, and
+  card anatomy.

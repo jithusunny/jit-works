@@ -59,11 +59,11 @@ Briefly nudge when work bypasses the active item, duplicates status, reopens set
 - `docs/` contains current public specifications and accepted technical decisions.
 - `ops/` contains product-scoped work tooling.
 - The web app is **Astro + Preact** on the Cloudflare adapter (see `docs/adr/0001-stack-astro-cloudflare.md`):
-  - `src/pages/` — routes (`index.astro` = main, `upwork.astro` = the Upwork-safe surface).
-  - `src/components/Showcase.tsx` — the single Preact island (header, hero, carousel, overlays);
-    both routes render it with a `variant` prop.
+  - `src/pages/` — routes (`index.astro` = the public site).
+  - `src/components/Showcase.tsx` — the single Preact island (header, hero, carousel, overlays).
   - `src/data/` — `projects.ts` (the selected projects, single source of truth) and `site.ts` (config,
-    Upwork URL). `src/layouts/Base.astro` holds fonts, grain, tokens. `public/assets/` holds images.
+    direct-contact destinations). `src/layouts/Base.astro` holds fonts, grain, tokens.
+    `public/assets/` holds images.
 - Because `NODE_ENV=production` is set in this environment, install dev tooling with
   `npm install --include=dev`, otherwise devDependencies are silently omitted.
 - Dev server: `npm run dev` (the Cloudflare adapter does not support `astro preview`).

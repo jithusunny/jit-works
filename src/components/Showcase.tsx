@@ -13,16 +13,12 @@ import {
   type Point,
 } from './lightboxGeometry';
 import {
-  UPWORK_URL,
+  EMAIL_URL,
+  WHATSAPP_URL,
   AUTOPLAY_SECONDS,
   PHOTO_OPACITY_DESKTOP,
   PHOTO_OPACITY_MOBILE,
-  type ShowcaseVariant,
 } from '../data/site';
-
-interface Props {
-  variant: ShowcaseVariant;
-}
 
 /** Cast helper so verbose inline style bags satisfy the strict style prop type. */
 const sx = (o: Record<string, unknown>): JSX.CSSProperties => o as JSX.CSSProperties;
@@ -44,14 +40,8 @@ const HERO_H = 'clamp(300px, calc(10dvh + 60vw), 74dvh)';
 const pad = (x: number) => String(x).padStart(2, '0');
 const real = (vi: number) => (((vi - CLONES) % N) + N) % N;
 
-/**
- * The product destination we may link to for this project on this surface.
- * On the Upwork-safe surface a destination is linked only after its contact-boundary
- * audit passes (`upworkLinkable`). On the main page any live product link is allowed.
- */
-function productLink(p: Project, isUpwork: boolean): string | undefined {
-  if (!p.href) return undefined;
-  if (isUpwork && !p.upworkLinkable) return undefined;
+/** The project's public destination, when one is available. */
+function productLink(p: Project): string | undefined {
   return p.href;
 }
 
@@ -584,12 +574,10 @@ function Lightbox({
   );
 }
 
-export default function Showcase({ variant }: Props) {
-  const isUpwork = variant === 'upwork';
-
+export default function Showcase() {
   const [index, setIndex] = useState(CLONES);
   const [playing, setPlaying] = useState(true);
-  const [overlay, setOverlay] = useState<null | 'project' | 'about'>(null);
+  const [overlay, setOverlay] = useState<null | 'project' | 'about' | 'contact'>(null);
   const [modalId, setModalId] = useState<string | null>(null);
   const [tab, setTab] = useState<'overview' | 'tech'>('overview');
   const [isMobile, setIsMobile] = useState(false);
@@ -785,6 +773,11 @@ export default function Showcase({ variant }: Props) {
   function openAbout() {
     m.current.prevFocus = document.activeElement;
     setOverlay('about');
+    focusPanel();
+  }
+  function openContact(preservePreviousFocus = false) {
+    if (!preservePreviousFocus) m.current.prevFocus = document.activeElement;
+    setOverlay('contact');
     focusPanel();
   }
   function closeOverlay() {
@@ -986,7 +979,6 @@ export default function Showcase({ variant }: Props) {
 
   const modalProject = projects.find((p) => p.id === modalId) || projects[0];
   const showExtras = !isMobile && !isShort;
-  const primaryLabel = isUpwork ? 'Continue on Upwork' : "Let’s build";
   const ri = real(index);
 
   // ----- styles that depend on layout -----
@@ -1050,15 +1042,15 @@ export default function Showcase({ variant }: Props) {
       {/* ===== HEADER ===== */}
       <header style={sx({ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: 'clamp(14px,2.6vh,30px) clamp(18px,3.2vw,60px)', animation: 'fadeIn 0.5s ease both' })}>
         <nav style={sx({ display: 'flex', alignItems: 'center', gap: 'clamp(18px,2.6vw,30px)' })}>
-          <a
-            href={UPWORK_URL}
-            target="_blank"
-            rel="noopener"
-            style={sx({ display: 'inline-flex', alignItems: 'center', gap: 'clamp(8px,0.7vw,13px)', background: '#2E5E43', color: '#F1F7F0', cursor: 'pointer', padding: 'clamp(9px,1.05vw,28px) clamp(15px,2vw,52px)', borderRadius: 'clamp(12px,0.95vw,18px)', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 'clamp(13px,1.35vw,34px)', lineHeight: 1, boxShadow: '0 14px 30px -12px rgba(46,94,67,0.75)' })}
+          <button
+            onClick={() => openContact()}
+            aria-haspopup="dialog"
+            aria-expanded={overlay === 'contact'}
+            style={sx({ display: 'inline-flex', alignItems: 'center', gap: 'clamp(8px,0.7vw,13px)', background: '#2E5E43', color: '#F1F7F0', cursor: 'pointer', padding: 'clamp(9px,1.05vw,28px) clamp(15px,2vw,52px)', border: 'none', borderRadius: 'clamp(12px,0.95vw,18px)', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 'clamp(13px,1.35vw,34px)', lineHeight: 1, boxShadow: '0 14px 30px -12px rgba(46,94,67,0.75)' })}
           >
             <span style={sx({ width: 'clamp(9px,0.73vw,14px)', height: 'clamp(9px,0.73vw,14px)', borderRadius: '50%', background: '#C9F24E' })} />
-            {primaryLabel}
-          </a>
+            Contact Jithu
+          </button>
           <button
             onClick={openAbout}
             aria-label="About Jithu"
@@ -1114,7 +1106,7 @@ export default function Showcase({ variant }: Props) {
             style={sx({ display: 'flex', gap: 'clamp(8px,1vw,16px)', height: '100%', alignItems: 'stretch', transition: 'none', willChange: 'transform', transform: 'translateX(calc(8.3vw - ' + CLONES + ' * (83.4vw + clamp(8px,1vw,16px))))' })}
           >
             {LOOP.map((p, li) => {
-              const link = productLink(p, isUpwork);
+              const link = productLink(p);
               const d0 = Math.abs(li - CLONES);
               const selectedMedia = cardMedia[p.id] ?? 0;
               return (
@@ -1238,12 +1230,16 @@ export default function Showcase({ variant }: Props) {
 
       {/* ===== OVERLAYS ===== */}
       {overlay && (
-        <div onClick={(e) => { if (e.target === e.currentTarget) closeOverlay(); }} style={sx({ position: 'fixed', inset: 0, zIndex: 100, background: 'var(--backdrop)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(14px,3vw,48px)', animation: 'fadeIn 0.22s ease' })}>
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) closeOverlay(); }}
+          style={sx(overlay === 'contact'
+            ? { position: 'fixed', inset: 0, zIndex: 100, background: 'var(--backdrop)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'flex-start', justifyContent: isMobile ? 'center' : 'flex-end', padding: isMobile ? 0 : 'clamp(82px,10vh,110px) clamp(18px,3.2vw,60px) clamp(18px,3vw,48px)', animation: 'fadeIn 0.22s ease' }
+            : { position: 'fixed', inset: 0, zIndex: 100, background: 'var(--backdrop)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(14px,3vw,48px)', animation: 'fadeIn 0.22s ease' })}
+        >
           {overlay === 'project' && (
             <ProjectOverlay
               p={modalProject}
               isMobile={isMobile}
-              isUpwork={isUpwork}
               tab={tab}
               setTab={setTab}
               panelRef={panelRef}
@@ -1253,7 +1249,10 @@ export default function Showcase({ variant }: Props) {
             />
           )}
           {overlay === 'about' && (
-            <AboutOverlay panelRef={panelRef} closeBtnRef={closeBtnRef} onClose={closeOverlay} primaryLabel={primaryLabel} />
+            <AboutOverlay panelRef={panelRef} closeBtnRef={closeBtnRef} onClose={closeOverlay} onContact={() => openContact(true)} />
+          )}
+          {overlay === 'contact' && (
+            <ContactOverlay isMobile={isMobile} panelRef={panelRef} closeBtnRef={closeBtnRef} onClose={closeOverlay} />
           )}
         </div>
       )}
@@ -1276,11 +1275,10 @@ export default function Showcase({ variant }: Props) {
 // ---------------------------------------------------------------------------
 
 function ProjectOverlay({
-  p, isMobile, isUpwork, tab, setTab, panelRef, closeBtnRef, onClose, onOpenLightbox,
+  p, isMobile, tab, setTab, panelRef, closeBtnRef, onClose, onOpenLightbox,
 }: {
   p: Project;
   isMobile: boolean;
-  isUpwork: boolean;
   tab: 'overview' | 'tech';
   setTab: (t: 'overview' | 'tech') => void;
   panelRef: preact.RefObject<HTMLDivElement>;
@@ -1289,7 +1287,7 @@ function ProjectOverlay({
   onOpenLightbox: (id: string, i: number) => void;
 }) {
   const over = tab === 'overview';
-  const link = productLink(p, isUpwork);
+  const link = productLink(p);
   const tabBtn = (on: boolean): JSX.CSSProperties => sx({ border: 'none', cursor: 'pointer', fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: '14px', padding: '8px 15px', borderRadius: '9px', transition: 'all .2s ease', background: on ? '#FBF9F2' : 'transparent', color: on ? '#23241E' : '#8B8977', boxShadow: on ? '0 3px 8px -4px rgba(60,50,25,0.4)' : 'none' });
 
   const shellStyle = isMobile
@@ -1396,12 +1394,12 @@ function ProjectOverlay({
 }
 
 function AboutOverlay({
-  panelRef, closeBtnRef, onClose, primaryLabel,
+  panelRef, closeBtnRef, onClose, onContact,
 }: {
   panelRef: preact.RefObject<HTMLDivElement>;
   closeBtnRef: preact.RefObject<HTMLButtonElement>;
   onClose: () => void;
-  primaryLabel: string;
+  onContact: () => void;
 }) {
   return (
     <div ref={panelRef} role="dialog" aria-modal="true" aria-label="About" style={sx({ width: 'min(520px,92vw)', maxHeight: '88vh', overflow: 'auto', background: '#FBF9F2', borderRadius: '24px', boxShadow: '0 50px 100px -35px rgba(30,22,12,0.6)', position: 'relative', padding: 'clamp(26px,3vw,46px)', animation: 'panelIn 0.34s cubic-bezier(0.22,1,0.36,1)' })}>
@@ -1411,10 +1409,47 @@ function AboutOverlay({
       </div>
       <h2 style={sx({ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(28px,3vw,38px)', letterSpacing: '-0.03em', margin: '0 0 16px', color: '#20211B' })}>Hi, I&rsquo;m Jithu.</h2>
       <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: '17px', lineHeight: 1.6, color: '#3C3D34', margin: '0 0 16px' })}>I build software, systems, and experiments around ideas that genuinely excite me, from local-first personal tools to real-time multiplayer games and AI-moderated chat.</p>
-      <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: '17px', lineHeight: 1.6, color: '#57584A', margin: '0 0 24px' })}>This site is a small, honest map of that work. If something here fits what you&rsquo;re building, the best next step is a message on Upwork.</p>
-      <a href={UPWORK_URL} target="_blank" rel="noopener" style={sx({ display: 'inline-flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: '15px', color: '#F1F7F0', background: '#2E5E43', padding: '12px 18px', borderRadius: '12px', boxShadow: '0 10px 22px -10px rgba(46,94,67,0.7)' })}>
-        <span style={sx({ width: '11px', height: '11px', borderRadius: '50%', background: '#C9F24E' })} />{primaryLabel} ↗
-      </a>
+      <p style={sx({ fontFamily: 'var(--font-ui)', fontSize: '17px', lineHeight: 1.6, color: '#57584A', margin: '0 0 24px' })}>This site is a small, honest map of that work.</p>
+      <button onClick={onContact} style={sx({ display: 'inline-flex', alignItems: 'center', gap: '8px', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: '15px', color: '#F1F7F0', background: '#2E5E43', padding: '12px 18px', borderRadius: '12px', boxShadow: '0 10px 22px -10px rgba(46,94,67,0.7)' })}>
+        <span style={sx({ width: '11px', height: '11px', borderRadius: '50%', background: '#C9F24E' })} />Contact Jithu
+      </button>
+    </div>
+  );
+}
+
+function ContactOverlay({
+  isMobile, panelRef, closeBtnRef, onClose,
+}: {
+  isMobile: boolean;
+  panelRef: preact.RefObject<HTMLDivElement>;
+  closeBtnRef: preact.RefObject<HTMLButtonElement>;
+  onClose: () => void;
+}) {
+  const optionStyle = sx({ display: 'grid', gridTemplateColumns: '42px 1fr auto', alignItems: 'center', gap: '13px', padding: isMobile ? '13px' : '14px', border: '1px solid #E4DFCF', borderRadius: '16px', color: '#20211B', textDecoration: 'none', background: '#FFFDF7' });
+  const iconStyle = sx({ display: 'grid', placeItems: 'center', width: '42px', height: '42px', borderRadius: '13px', background: '#E4EFE3', color: '#2E5E43', fontWeight: 800 });
+
+  return (
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="contact-title"
+      style={sx({ width: isMobile ? '100%' : 'min(430px,calc(100vw - 36px))', background: '#FBF9F2', borderRadius: isMobile ? '26px 26px 0 0' : '24px', boxShadow: '0 34px 90px -30px rgba(30,22,12,0.68)', position: 'relative', padding: isMobile ? '28px 20px max(24px, env(safe-area-inset-bottom))' : '26px', animation: isMobile ? 'sheetUp 0.32s cubic-bezier(0.22,1,0.36,1)' : 'panelIn 0.28s cubic-bezier(0.22,1,0.36,1)' })}
+    >
+      <button ref={closeBtnRef} onClick={onClose} aria-label="Close contact options" style={sx({ position: 'absolute', top: '14px', right: '14px', width: '38px', height: '38px', border: '1px solid #E4DFCF', borderRadius: '50%', background: '#FBF9F2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', color: '#57584A' })}>&#10005;</button>
+      <h2 id="contact-title" style={sx({ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: isMobile ? '30px' : '34px', lineHeight: 1, letterSpacing: '-0.03em', margin: '0 44px 22px 0', color: '#20211B' })}>Contact Jithu</h2>
+      <div style={sx({ display: 'grid', gap: '10px' })}>
+        <a href={WHATSAPP_URL} target="_blank" rel="noopener" style={optionStyle}>
+          <span aria-hidden="true" style={iconStyle}>W</span>
+          <span style={sx({ fontWeight: 700 })}>WhatsApp</span>
+          <span aria-hidden="true" style={sx({ color: '#2E5E43', fontSize: '21px' })}>↗</span>
+        </a>
+        <a href={EMAIL_URL} style={optionStyle}>
+          <span aria-hidden="true" style={iconStyle}>@</span>
+          <span style={sx({ fontWeight: 700 })}>Email</span>
+          <span aria-hidden="true" style={sx({ color: '#2E5E43', fontSize: '21px' })}>↗</span>
+        </a>
+      </div>
     </div>
   );
 }
