@@ -1,12 +1,8 @@
-// Site-wide configuration shared by both routes.
+// Site-wide configuration.
 
-/**
- * The single contact channel for v1 (Upwork-first). Both the main page and the
- * permanent /upwork surface route their primary action here. A later, separately
- * reviewed change may give the main page a direct destination; it must not touch
- * the Upwork-safe surface. See issue #3.
- */
-export const UPWORK_URL = 'https://www.upwork.com/freelancers/jithusunny';
+/** Direct contact destinations used by the contact chooser. */
+export const WHATSAPP_URL = 'https://wa.me/919632323154';
+export const EMAIL_URL = 'mailto:jithusunnyk@gmail.com';
 
 /** Carousel autoplay interval in seconds (handoff default 6.5, tweakable 3 to 12). */
 export const AUTOPLAY_SECONDS = 6.5;
@@ -14,5 +10,3 @@ export const AUTOPLAY_SECONDS = 6.5;
 /** Hero photo opacity (handoff default 0.9 mobile / 0.96 desktop, range 0.3 to 1). */
 export const PHOTO_OPACITY_DESKTOP = 0.96;
 export const PHOTO_OPACITY_MOBILE = 0.9;
-
-export type ShowcaseVariant = 'main' | 'upwork';
