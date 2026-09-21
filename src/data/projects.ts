@@ -319,4 +319,48 @@ export const projects: Project[] = [
       'Touch, keyboard, reduced-motion, and no-JavaScript support',
     ],
   },
+  {
+    id: 'mridhu',
+    no: '07',
+    title: 'Mridhu',
+    category: 'E-commerce',
+    status: 'Live',
+    statusTone: 'live',
+    tagline: 'A calm online shop for handmade cotton bedsheets, grouped by the craft behind each one.',
+    hardPart: 'Every piece carries its craft, size, and measurements, so the catalogue stays easy to browse as the range grows.',
+    screens: ['01 · Home', '02 · Collections', '03 · Bedsheets', '04 · Product'],
+    media: [
+      {
+        src: '/assets/projects/mridhu/home.png',
+        alt: 'Mridhu by Elsa storefront home page on desktop, showing the cotton bedsheet range and a featured embroidered piece.',
+      },
+      {
+        src: '/assets/projects/mridhu/collections.png',
+        alt: 'Mridhu collections page on desktop, browsing bedsheets by craft such as handblock prints, daily-use, and appliqué work.',
+      },
+      {
+        src: '/assets/projects/mridhu/bedsheets-tablet.png',
+        alt: 'Mridhu all-bedsheets collection on a tablet, showing a two-column grid of cotton bedsheets with sizes and prices.',
+      },
+      {
+        src: '/assets/projects/mridhu/product-phone.png',
+        alt: 'Mridhu product page on a phone, showing a handblock-printed cotton bedsheet with its size, material, and craft details.',
+      },
+    ],
+    overview:
+      'Mridhu is a small online shop for thoughtfully made cotton bedsheets and table linen. It gives the Mridhu by Elsa range a calm, credible home where each piece is grouped by the craft behind it, so a shopper can browse by handblock print, embroidery, or appliqué as easily as by size or everyday use.',
+    tech:
+      'The shop is built around a structured product catalogue. Every bedsheet and runner carries its craft, size, measurements, and material, and that record drives the collections, search, and quick-view browsing. Product pages, a persistent bag, and support pages complete the shopping flow.',
+    stack: ['Storefront', 'Collections & search', 'Cart'],
+    role: 'Design + build',
+    period: '2026',
+    portfolioReviewedAt: '2026-09-21',
+    href: 'https://mridhu.in',
+    ctaLabel: 'Visit the shop',
+    features: [
+      'Browse bedsheets by craft, size, or everyday use',
+      'Product pages with size, material, and craft details',
+      'Search, quick view, and a persistent bag',
+    ],
+  },
 ];
