@@ -332,7 +332,7 @@ export const projects: Project[] = [
     media: [
       {
         src: '/assets/projects/mridhu/home.png',
-        alt: 'Mridhu by Elsa storefront home page on desktop, showing the cotton bedsheet range and a featured embroidered piece.',
+        alt: 'Mridhu by Elsa storefront shown on a desktop browser and a phone, with the home page, tagline, and a featured embroidered bedsheet.',
       },
       {
         src: '/assets/projects/mridhu/collections.png',
@@ -344,7 +344,7 @@ export const projects: Project[] = [
       },
       {
         src: '/assets/projects/mridhu/product-phone.png',
-        alt: 'Mridhu product page on a phone, showing a handblock-printed cotton bedsheet with its size, material, and craft details.',
+        alt: 'Mridhu product page on a phone, showing a floral-print cotton bedsheet with its size, material, and craft details.',
       },
     ],
     overview:
