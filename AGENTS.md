@@ -1,4 +1,4 @@
-# jit.works agent operating rules
+# jit.works agent operating rules (already loaded into your context; do not reopen)
 
 Shared brief for every coding agent in this repository. Keep it short: operating rules and up-front context only. Detailed history and completed planning do not belong here.
 
@@ -10,9 +10,8 @@ Clean, lean, correct, maintainable. Use proportionate tests, review your own cha
 
 ## Start
 
-- Product-local status comes from `npm run work -- brief`. Its Ready list is not a cross-product
-  priority decision.
-- For any repository change, run `npm run work -- brief` before planning or editing.
+- For any repository change, run `npm run work -- brief` before planning or editing. It gives
+  product-local status; its Ready list is not a cross-product priority decision.
 - Work on the issue the user selected. If the user explicitly wants to continue this product, use
   its active item or help choose a local Ready item. Do not automatically start another item after
   completing a slice unless the user approved a bounded issue sequence or focus run.
@@ -69,10 +68,10 @@ Briefly nudge when work bypasses the active item, duplicates status, reopens set
 - Dev server: `npm run dev` (the Cloudflare adapter does not support `astro preview`).
 - Build: `npm run build` · Type-check: `npx astro check`
 - Deploy: `npm run deploy` (Cloudflare Worker with static assets; config in `wrangler.jsonc`). The
-  approved production target is the existing `jit-works` Worker at `jit.works`. After relevant
-  checks pass and a change is merged, deploy there routinely without a separate owner approval,
-  then run production health checks. Ask before changing the Worker, domain, DNS, visibility,
-  privacy, security boundary, or deployment target.
+  approved production target (recorded 11 August 2026) is the existing `jit-works` Worker at
+  `jit.works`. After relevant checks pass and a change is merged, deploy there routinely without a
+  separate owner approval, then run production health checks. Ask before changing the Worker,
+  domain, DNS, visibility, privacy, security boundary, or deployment target.
 - Work status: `npm run work -- brief`
 - Work-system tests: `npm run test:work`
 - Full current test suite: `npm test`
