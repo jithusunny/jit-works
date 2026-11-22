@@ -2,7 +2,7 @@
 
 Shared brief for every coding agent in this repository. Keep it short: operating rules and up-front context only. Detailed history and completed planning do not belong here.
 
-jit.works is the public portfolio and studio website for Jithu Sunny. It should become one concise, credible link that shows selected work and makes it easy to start a conversation. The technical stack is not selected yet; choose it only when an implementation slice needs that decision.
+jit.works is the public portfolio and studio website for Jithu Sunny. It should become one concise, credible link that shows selected work and makes it easy to start a conversation. The stack is Astro + Preact on Cloudflare (ADR 0001); see Repository layout and commands below.
 
 ## Engineering bar
 
