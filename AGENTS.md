@@ -92,3 +92,7 @@ Briefly nudge when work bypasses the active item, duplicates status, reopens set
 - No unresolved critical review finding remains.
 - The work item is updated, and `npm run work -- brief` shows this product's current state and local
   Ready options.
+
+## Unattended blockers
+
+- The required work-status and completion commands need a local GitHub Project connection, as documented by the work tooling; `npm run work -- brief` currently stops because that connection is not configured.
