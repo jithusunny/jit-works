@@ -94,5 +94,6 @@ Briefly nudge when work bypasses the active item, duplicates status, reopens set
   Ready options.
 
 ## Unattended blockers
+Last reviewed: 2026-11-24.
 
 - The required work-status and completion commands need a local GitHub Project connection, as documented by the work tooling; `npm run work -- brief` currently stops because that connection is not configured.
