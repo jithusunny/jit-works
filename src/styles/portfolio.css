@@ -6354,50 +6354,40 @@ dialog[data-device="phone"] #dialog-content {
   }
 }
 
-/* A local image enlargement is a button, not an outward navigation link. */
+/* Keep enlargement controls with the previews, clear of the device and screen. */
+.design-device,
+.chat-phone {
+  margin-bottom: 52px;
+}
 .enlarge-button {
-  margin-top: 25px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 44px;
-  max-width: 100%;
-  padding: 10px 14px;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 12px;
   border: 1px solid #a9bc9c70;
-  border-radius: 8px;
-  background: transparent;
+  border-radius: 50%;
+  background: #203b2e;
   color: var(--ink);
-  font:
-    500 14px/1.4 Figtree,
-    system-ui,
-    sans-serif;
+  box-shadow: 0 3px 12px #071b1633;
   cursor: zoom-in;
-  justify-self: start;
-  transition:
-    background 0.18s,
-    border-color 0.18s;
+  transition: background 0.18s, border-color 0.18s;
 }
 .enlarge-button svg {
   width: 18px;
   height: 18px;
-  flex: none;
 }
 .enlarge-button:hover {
-  background: #cbeaac18;
+  background: #314e3d;
   border-color: #cbeaac;
 }
 .enlarge-button:focus-visible {
   outline: 3px solid #cbeaac;
   outline-offset: 4px;
-}
-@media (min-width: 701px) and (max-width: 1250px) {
-  .process-copy > .enlarge-button {
-    margin-top: 16px;
-    grid-column: 2;
-    grid-row: 3;
-    align-self: start;
-  }
 }
 
 /* Centre each group heading on its column; keep service labels easy to scan. */
