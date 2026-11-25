@@ -8,22 +8,22 @@
     "preview": "astro preview",
     "astro": "astro",
     "test": "npm run test:work && npm run test:ui",
-    "test:ui": "node --test src/components/lightboxGeometry.test.ts src/data/site.test.ts",
+    "test:ui": "node --test src/data/site.test.ts",
     "test:work": "node --test ops/*.test.mjs",
     "work": "node ops/work.mjs",
-    "deploy": "astro build && wrangler deploy"
+    "deploy": "astro build && wrangler deploy",
+    "test:browser": "npm run build && playwright test"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^12.6.0",
-    "@astrojs/preact": "^4.1.0",
-    "astro": "^5.13.0",
-    "preact": "^10.27.0"
+    "astro": "^5.13.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
+    "@playwright/test": "1.62.1",
     "typescript": "^5.9.3",
     "wrangler": "^4.113.0"
   }

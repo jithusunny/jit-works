@@ -1,6 +1,5 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
-import preact from '@astrojs/preact';
 import cloudflare from '@astrojs/cloudflare';
 
 // v1 is fully prerendered (static, fast). The Cloudflare adapter is wired now so
@@ -9,6 +8,5 @@ import cloudflare from '@astrojs/cloudflare';
 export default defineConfig({
   site: 'https://jit.works',
   output: 'static',
-  adapter: cloudflare(),
-  integrations: [preact()],
+  adapter: cloudflare({ imageService: "compile" }),
 });

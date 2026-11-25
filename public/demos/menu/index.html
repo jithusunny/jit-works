@@ -1,0 +1,1607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b3428">
+<meta name="robots" content="noindex">
+<!-- A PDF that turns like a book: the settled flip-book viewer from Jithu's brochure kit, reading a
+     book's manifest (src/shared/manifest.ts). The Worker (src/worker/books.ts) fills in the {{…}}
+     fields; the page pictures load from the book's version folder. One file, WebGL2, no library; a
+     plain swipe where WebGL2 is missing. -->
+<title>Tonico Café</title>
+<meta name="description" content="Tonico café menu">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ribbonpage">
+<meta property="og:title" content="Tonico Café">
+<meta property="og:description" content="Tonico café menu">
+<meta property="og:image" content="book/small/0001.jpg">
+<meta property="og:image:width" content="1148">
+<meta property="og:image:height" content="1774">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:,">
+<script>
+// The atlas first, while the rest of the page arrives: the cover shows from it (loadSmall). Fetched
+// here rather than preloaded, because Chrome sometimes never hands a preloaded body to fetch().
+// Fresh HTML has just checked book availability. The versioned atlas never changes, so reuse
+// downloaded bytes without a second round trip. Ordinary direct file requests still revalidate.
+// Bound network silence, not total transfer time: a large image on a slow connection must be
+// allowed to finish while bytes keep arriving. AbortController also works on older browsers.
+async function fetchBlob(url, options = {}, byteLimit = () => Infinity) {
+  const controller = new AbortController(), abort = () => controller.abort();
+  let timer;
+  const progress = () => { clearTimeout(timer); timer = setTimeout(abort, 15000); };
+  const signal = options.signal;
+  if (signal?.aborted) abort(); else signal?.addEventListener('abort', abort, { once: true });
+  progress();
+  try {
+    const r = await fetch(url, { ...options, signal: controller.signal });
+    if (!r.ok) { throw new Error(r.status); }
+    // A speculative file may no longer fit. Check headers and streamed bytes; promotion to
+    // foreground removes the limit without restarting a useful transfer.
+    if (Number(r.headers.get('content-length')) > byteLimit()) { abort(); return null; }
+    const reader = r.body.getReader(), chunks = []; let size = 0; progress();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > byteLimit()) { abort(); return null; }
+      chunks.push(value); progress();
+    }
+    return new Blob(chunks, { type: r.headers.get('content-type') || '' });
+  } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
+}
+const atlasController = new AbortController();
+window.atlasFirst = fetchBlob("book/atlas.jpg", { cache: 'force-cache', signal: atlasController.signal });
+// The document may still be arriving when this request fails.
+window.atlasFirst.catch(() => {});
+// This embedded menu is served from the bundled portfolio assets.
+</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; background: #1b3428; font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+body.ready { font-family: Inter, -apple-system, system-ui, sans-serif; }   /* the font loads after the cover, never before it */
+body { height: 100dvh; user-select: none; -webkit-user-select: none; }
+.stage { position: fixed; inset: 0; }   /* the drawing covers the window, so a raised page or a shadow is never clipped */
+#safe { position: fixed; inset: 0; visibility: hidden; pointer-events: none;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+#book { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+/* The book appears once it has pictures to show (well under a second), so a page is never seen blank. */
+#book, .controls { opacity: 0; pointer-events: none; transition: opacity .25s; }
+.ready #book, .ready .controls { opacity: 1; pointer-events: auto; }
+.controls { position: fixed; left: 0; top: 0; z-index: 1; }   /* placed under the book; on a short screen, beside it */
+/* The buttons are quiet: paper-coloured, dark marks, a soft edge; the book stays the thing to look at. */
+.pill { display: flex; align-items: center; gap: 2px; padding: 2px; border-radius: 22px; color: #101b2c;
+  background: #fdfcfaf2; border: 1px solid #e2dbcf; box-shadow: 0 1px 2px #1724380f, 0 6px 16px -8px #17243833; }
+.pill button { width: 34px; height: 34px; border: 0; border-radius: 50%; background: none; color: inherit; font: inherit; cursor: pointer; display: grid; place-items: center; }
+.pill button:hover { background: #101b2c0f; }
+.pill button:focus-visible, .jump input:focus-visible { outline: 2px solid #125bc5; outline-offset: -3px; }
+.pill button[disabled] { opacity: .3; pointer-events: none; }
+.pill svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pill .count, .jump { width: auto; min-width: 66px; padding: 0 10px; border-radius: 17px; font-size: 12px; font-weight: 600; letter-spacing: .04em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.jump { height: 34px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.jump input { width: 34px; height: 24px; border: 0; border-radius: 6px; background: #101b2c12; color: inherit; font: inherit; text-align: center; }
+.sep { width: 1px; height: 18px; background: #101b2c1f; margin: 0 3px; }
+.controls.compact .pill button, .controls.compact .jump { height: 27px; }   /* touch screens: a little smaller */
+.controls.compact .pill button:not(.count) { width: 31px; }
+.controls.compact .pill svg { width: 16px; height: 16px; }
+.controls.compact .count, .controls.compact .jump { min-width: 58px; font-size: 11.5px; }
+/* A phone on its side: the book takes the full height; ‹ and › in the side margins, zoom and the page
+   number at the foot of each, each a small quiet button of its own. */
+.controls.side .pill { display: contents; }
+.controls.side .pill > * { position: fixed; transform: translate(-50%, -50%); background: #fdfcfaf2; border: 1px solid #e2dbcf;
+  box-shadow: 0 1px 2px #1724380f, 0 6px 16px -8px #17243833; }
+.controls.side .pill button:not(.count) { width: 38px; height: 38px; }
+.controls.side .count, .controls.side .jump { min-width: 58px; height: 28px; }
+.controls.side .sep { display: none; }
+.controls[hidden], .jump[hidden], .count[hidden], .zoom[hidden] { display: none; }
+@font-face { font-family: Inter; src: url('viewer/inter.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+/* The title in the top left corner, as a reader expects of a published booklet; a long one stops at two lines */
+.title { position: fixed; left: 0; top: 0; z-index: 1; pointer-events: none; color: #101b2c; max-width: calc(100vw - 32px); }
+.has-fullscreen .title, .reporting .title { max-width: calc(100vw - 104px); }
+.has-fullscreen.reporting .title { max-width: calc(100vw - 160px); }
+.report { position: fixed; top: env(safe-area-inset-top, 0px); right: max(8px, env(safe-area-inset-right)); z-index: 2; min-height: 44px; min-width: 64px; display: grid; place-items: center; color: #505967; font-size: 12px; }
+.has-fullscreen .report { top: max(8px, env(safe-area-inset-top)); right: max(64px, calc(56px + env(safe-area-inset-right))); }
+.report:focus-visible { outline: 2px solid #125bc5; }
+.title .name { font-size: 19px; font-weight: 650; letter-spacing: -.01em; line-height: 1.25; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.title.compact .name { font-size: 18px; }
+.title[hidden] { display: none; }
+/* A consistent top-corner expand/close control, including the plain-page fallback. */
+.fullscreen { position: fixed; right: max(8px, env(safe-area-inset-right)); top: max(8px, env(safe-area-inset-top)); z-index: 2; }
+.fullscreen[hidden] { display: none; }
+.fullscreen button { width: 44px; height: 44px; }
+/* Each page's text, for screen readers: in the page, not on screen */
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); }
+/* On the cover: a quiet hint beside its corner, gone once the book is opened */
+.hint { position: fixed; left: 0; top: 0; z-index: 1; pointer-events: none; display: flex; align-items: center; gap: 5px;
+  font-size: 12.5px; color: #6b7280; opacity: 0; transition: opacity .6s ease; white-space: nowrap; }
+.hint.show { opacity: 1; }
+.hint[hidden] { display: none; }
+.hint svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.hint.below svg { transform: rotate(60deg); }
+/* End feedback uses the page counter's own space, without moving any control. */
+.pill .count { position: relative; }
+.controls .count[data-end="last"] { background: linear-gradient(#101b2c0f, #101b2c0f), #fdfcfaf2; }
+.count[data-end] .page-count { opacity: 0; }
+.count[data-end="single"] .end-feedback { color: #6b7280; }
+.end-feedback { position: absolute; inset: 0; display: grid; place-items: center;
+  pointer-events: none; font-size: inherit; font-weight: 500; letter-spacing: 0; }
+/* Without WebGL2: the pages side by side, swiped */
+.plain { position: absolute; inset: 0; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.plain img { flex: 0 0 100%; height: 100%; object-fit: contain; padding: 12px; scroll-snap-align: center; }
+/* Zoom */
+.zoom { position: fixed; inset: 0; z-index: 10; background: #1b3428f7; touch-action: none; overflow: hidden; opacity: 0; transition: opacity .2s; cursor: grab; }
+.zoom.open { opacity: 1; }
+.zoom .content { position: absolute; left: 0; top: 0; display: flex; transform-origin: 0 0; }
+.zoom .content img { display: block; flex: none; height: 100%; box-shadow: 0 6px 30px #0002; }
+.zoom .bar { position: absolute; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom)); transform: translateX(-50%); }
+.zoom.side .bar { left: auto; right: calc(12px + env(safe-area-inset-right)); transform: none; }
+.zoom .close { position: absolute; right: calc(12px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top)); }
+.zoom .close button { width: 44px; height: 44px; }
+
+#title, .title, #hint, .hint {color:#dce8d1}
+.embedded .title.compact .name{font-size:14px;line-height:22px}
+.embedded .fullscreen{display:none}
+.embedded .fullscreen button{width:30px;height:30px}
+.embedded .controls.compact .pill button,.embedded .controls.compact .jump{height:30px}
+.embedded .controls.compact .pill button:not(.count){width:32px}
+.embedded .hint{display:none}
+.embedded .jump{padding-inline:4px}
+
+</style>
+</head>
+<body class="">
+<main class="stage" id="stage"><canvas id="book" role="img" aria-label="Tonico Café, a book. Use the arrow keys or the buttons below to turn pages; the text of every page follows."></canvas>
+<section class="sr" id="text" aria-label="Text of the book"></section></main>
+<div id="safe" aria-hidden="true"></div>
+<header class="title" id="title"><h1 class="name">Tonico Café</h1></header>
+
+<div class="fullscreen pill" id="fullscreenControl"><button id="fullscreenBtn" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="fullscreenIcon" d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/></svg></button></div>
+<div class="hint" id="hint" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 15c-5 0-9-2-12-7M8 8v5M8 8h5"/></svg><span id="hintText">Tap to open</span></div>
+<div class="sr" id="endStatus" role="status" aria-atomic="true"></div>
+<div class="controls" id="controls">
+  <div class="pill">
+    <button id="prev" aria-label="Previous page" disabled><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="count" id="count" aria-label="Go to a page" title="Go to a page"><span class="page-count" id="pageCount"></span><span class="end-feedback" id="endFeedback" aria-hidden="true"></span></button>
+    <form class="jump" id="jump" hidden><input id="jumpTo" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" aria-label="Page number"><span id="jumpOf"></span></form>
+    <button id="next" aria-label="Next page"><svg viewBox="0 0 24 24"><path id="nextIcon" d="M9 6l6 6-6 6"/></svg></button>
+    <span class="sep"></span>
+    <button id="zoomBtn" aria-label="Zoom in"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5M11 8.5v5M8.5 11h5"/></svg></button>
+  </div>
+</div>
+<div class="zoom" id="zoom" hidden role="dialog" aria-modal="true" aria-label="Zoomed page">
+  <div class="content" id="zc"></div>
+  <div class="close pill"><button id="zClose" aria-label="Close zoom"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="bar pill">
+    <button id="zOut" aria-label="Zoom out"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+    <button id="zIn" aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg></button>
+  </div>
+</div>
+
+<script>
+// Fullscreen is independent of WebGL, so plain-page readers get the same control.
+(() => {
+  const button = document.getElementById('fullscreenBtn'), icon = document.getElementById('fullscreenIcon');
+  const expand = icon.getAttribute('d');
+  let mode = '', pending = false, restoreEmbed = null;
+  const canExpandFrame = !!window.frameElement;
+  button.parentElement.hidden = !document.fullscreenEnabled && !canExpandFrame;
+  document.body.classList.toggle('has-fullscreen', !button.parentElement.hidden);
+  const update = (next) => {
+    mode = next;
+    button.setAttribute('aria-label', mode ? 'Exit full screen' : 'Full screen');
+    button.title = mode ? 'Exit full screen' : 'Full screen';
+    icon.setAttribute('d', mode ? 'M6 6l12 12M18 6L6 18' : expand);
+  };
+  const restore = () => {
+    // Browser Escape can also leave native fullscreen while a page is zoomed.
+    if (!document.getElementById('zoom').hidden) closeZoom();
+    restoreEmbed?.(); restoreEmbed = null;
+    update(''); button.focus({ preventScroll: true });
+  };
+  const viewport = () => {
+    // Our same-origin homepage can expand its existing iframe without navigating or reparenting it.
+    // Reparenting an iframe reloads its document and loses the reader's place.
+    const frame = window.frameElement;
+    if (!frame) return; // A denied native request leaves the focused control available to retry.
+    const doc = frame.ownerDocument, win = doc.defaultView, x = win.scrollX, y = win.scrollY;
+    const saved = [frame, doc.body, doc.documentElement].map(el => [el, el.getAttribute('style')]);
+    const popover = frame.getAttribute('popover');
+    const topLayer = typeof frame.showPopover === 'function';
+    if (topLayer) { frame.setAttribute('popover', 'manual'); frame.showPopover(); }
+    const inert = [];
+    for (let node = frame; node.parentElement; node = node.parentElement) {
+      for (const sibling of node.parentElement.children) if (sibling !== node && sibling instanceof win.HTMLElement) {
+        inert.push([sibling, sibling.inert]); sibling.inert = true;
+      }
+      if (node.parentElement === doc.body) break;
+    }
+    Object.assign(doc.body.style, { position: 'fixed', top: `${-y}px`, left: `${-x}px`, width: '100%', overflow: 'hidden' });
+    doc.documentElement.style.overflow = 'hidden';
+    frame.style.height = '100vh'; // Older browsers ignore dvh and retain this fallback.
+    Object.assign(frame.style, { position: 'fixed', inset: '0', width: '100vw', height: '100dvh', minHeight: '0', maxHeight: 'none', borderRadius: '0', zIndex: '2147483647', margin: '0', padding: '0', border: '0', maxWidth: 'none' });
+    restoreEmbed = () => {
+      if (topLayer) { frame.hidePopover(); popover === null ? frame.removeAttribute('popover') : frame.setAttribute('popover', popover); }
+      for (const [el, value] of saved) value === null ? el.removeAttribute('style') : el.setAttribute('style', value);
+      for (const [el, value] of inert) el.inert = value;
+      win.scrollTo({ left: x, top: y, behavior: 'instant' });
+    };
+    update('viewport'); button.focus({ preventScroll: true });
+  };
+  const exit = async () => {
+    if (pending) return;
+    if (mode === 'native' && document.fullscreenElement) {
+      pending = true;
+      try { await document.exitFullscreen(); } catch { /* Keep the working close control for another attempt. */ }
+      finally { pending = false; }
+    } else restore();
+  };
+  button.onclick = async () => {
+    if (pending) return;
+    if (mode) { await exit(); return; }
+    pending = true;
+    try {
+      if (document.fullscreenEnabled && document.documentElement.requestFullscreen) {
+        try { await document.documentElement.requestFullscreen(); return; }
+        catch { /* iPhone and denied requests still get a full browser-viewport view. */ }
+      }
+      viewport();
+    } finally { pending = false; }
+  };
+  document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement) { update('native'); button.focus({ preventScroll: true }); }
+    else if (mode === 'native') restore();
+  });
+  addEventListener('keydown', e => {
+    // Zoom and page-number entry keep their own Escape behavior first.
+    if (e.key === 'Escape' && !e.defaultPrevented && mode && document.getElementById('zoom').hidden && document.getElementById('jump').hidden) {
+      e.preventDefault(); void exit();
+    }
+    if (e.key === 'Tab' && !e.defaultPrevented && mode) {
+      const zoom = document.getElementById('zoom'), scope = document.getElementById('controls').inert ? zoom : document;
+      const focusable = [...scope.querySelectorAll('button, a[href], input, select, textarea, summary, [tabindex]')].filter(el => (scope === zoom || !zoom.contains(el)) && !el.disabled && el.tabIndex >= 0 && !el.closest('[inert]') && el.getClientRects().length && getComputedStyle(el).visibility === 'visible');
+      const first = focusable[0], last = focusable.at(-1);
+      if (e.shiftKey && (document.activeElement === first || !focusable.includes(document.activeElement))) { e.preventDefault(); last?.focus(); }
+      else if (!e.shiftKey && (document.activeElement === last || !focusable.includes(document.activeElement))) { e.preventDefault(); first?.focus(); }
+    }
+  });
+  addEventListener('pagehide', () => { restoreEmbed?.(); restoreEmbed = null; update(''); });
+})();
+</script>
+
+<!-- ======================= shaders ======================= -->
+<script id="common" type="x-shader">
+const vec3 PAPER = vec3(.957, .945, .925), TABLE = vec3(.105882, .203922, .156863);   // TABLE matches the page background
+uniform vec2 uSize;     // page width, height (book px)
+uniform float uOpen;    // how open the book is: 0 closed on a cover, 1 lying open (the crease shows)
+uniform float uLeftW;   // how much of the left page shows: all of it, or one page at a time a sliver
+</script>
+
+<script id="pagefs" type="x-shader">
+// A page's picture. `at` places it in its texture: the whole of a page's own picture, or its cell of the
+// atlas. `fit` places the picture on the leaf: all of it, or, for a page of another shape, centred
+// with paper round it. has: 0 no page, 1 a picture, 2 nothing yet (plain paper, only for a moment at start).
+// Always called for every pixel, never inside a branch that differs between neighbouring pixels: the
+// card works out how sharp a copy to read from neighbouring pixels, and inside such a branch some cards
+// read nonsense there (a blurred, brownish copy, in dashes along the page edges). The sharpness is also
+// given explicitly, from the unclamped position, so the page edge reads the same copy as the page.
+// Flat and turning pages share the same bias: text must not change sharpness as a page lands.
+vec4 pg(sampler2D t, float has, vec4 at, vec4 fit, vec2 uv) {
+  vec2 q = (uv - fit.xy) / fit.zw, dx = dFdx(q) * at.zw * .76, dy = dFdy(q) * at.zw * .76;
+  vec4 c = textureGrad(t, at.xy + clamp(q, .002, .998) * at.zw, dx, dy);
+  vec2 e = min(q, 1. - q) / max(fwidth(q), 1e-5);              // how far inside the picture, in screen pixels
+  float inside = fit.z * fit.w > .9999 ? 1. : clamp(min(e.x, e.y) + .5, 0., 1.);
+  c = mix(vec4(PAPER, 1.), c, inside);
+  return has < .5 ? vec4(0.) : has > 1.5 ? vec4(PAPER, 1.) : c;
+}
+// Where a page curves down into the binding it catches less light: a narrow dark crease, a wider
+// soft shade, then a faint lift of light where the paper starts to curve.
+// A closed cover has the same soft curve round the spine, without the narrow crease between two open
+// pages: uOpen blends from the one to the other.
+float binding(float x) {
+  float d = abs(x) / uSize.x;
+  return 1. - (.22 * uOpen * exp(-d / .012) + .09 * exp(-d / .07) + .05 * (1. - uOpen) * exp(-d / .03)
+             - .025 * exp(-pow((d - .16) / .07, 2.)));
+}
+</script>
+
+<script id="bgfs" type="x-shader">
+uniform vec2 uRes;
+uniform vec3 uView;     // book x, y at the canvas's top left; book px per device px
+uniform sampler2D tL, tR, tShadow;
+uniform vec2 uHas;      // left page, right page
+uniform vec4 uAtL, uAtR, uFitL, uFitR;
+uniform vec2 uStack;    // thickness of the page block showing on the left and on the right (book px)
+uniform float uTurn;
+out vec4 o;
+float box(vec2 p, vec2 lo, vec2 hi) { vec2 d = max(lo - p, p - hi); return length(max(d, 0.)) + min(max(d.x, d.y), 0.); }
+void main() {
+  float W = uSize.x, H = uSize.y, px = uView.z;
+  vec2 Q = uView.xy + vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) * px;
+  bool hasL = uHas.x > .5, hasR = uHas.y > .5;
+  vec2 lo = vec2(hasL ? -min(uLeftW, W) : 0., 0.), hi = vec2(hasR ? W : 0., H);
+  vec2 blo = lo - vec2(hasL ? uStack.x : 0., 0.), bhi = hi + vec2(hasR ? uStack.y : 0., max(uStack.x, uStack.y));
+  float shade = uTurn > .5 ? texture(tShadow, gl_FragCoord.xy / uRes).r : 0.;
+  // On the table: a wide soft shadow, a tight contact shadow, and the lifted page's shadow.
+  float a = .16 * (1. - smoothstep(-.02 * H, .05 * H, box(Q - vec2(.008 * W, .016 * H), blo, bhi)))
+          + .09 * (1. - smoothstep(0., .014 * H, box(Q - vec2(0., .003 * H), blo, bhi)));   // a soft contact shade, not an outline
+  vec3 c = TABLE * (1. - clamp(a + .45 * shade, 0., 1.));
+  // The edges of the page block: one smooth tone, a little darker towards the table. (No sheet lines:
+  // finer than a screen pixel, they break up into dashes.)
+  float e = box(Q, lo, hi), deep = max(max(uStack.x, uStack.y), 1.);
+  c = mix(c, PAPER * mix(.95, .86, clamp(e / deep, 0., 1.)), clamp(.5 - box(Q, blo, bhi) / px, 0., 1.));
+  // The pages.
+  float kp = clamp(.5 - e / px, 0., 1.);
+  vec4 pL = pg(tL, uHas.x, uAtL, uFitL, vec2((Q.x + W) / W, Q.y / H)), pR = pg(tR, uHas.y, uAtR, uFitR, Q / uSize);   // flat: crisp text
+  if (kp > 0.) {
+    vec4 p = Q.x < 0. ? pL : pR;
+    float crease = binding(Q.x);
+    c = mix(c, p.rgb * crease * (1. - .55 * shade), kp * p.a);
+  }
+  o = vec4(c, 1.);
+}
+</script>
+
+<script id="sheetvs" type="x-shader">
+// The turning page is drawn as strips laid along its bend: dense across the curve, one each for the
+// flat and the straight parts. Along the bend the page is straight, so this follows the curve exactly
+// at any angle; the strips cover the page's whole extent and are trimmed to it in the fragment shader.
+in vec2 aUV;            // x: position along its part (0 to 1); y: which side of the page's extent
+in float aPart;         // 0 still flat, 1 the curve, 2 straight beyond it
+uniform vec2 uA, uDir, uCam, uS, uV;    // bend line point and direction; extent along and across it
+uniform float uR, uAlpha, uZc, uMirror;
+uniform vec4 uView;     // book x, y at the canvas's top left; canvas width, height (book px)
+uniform vec3 uShadowLight;
+uniform int uMode;      // 0 the page, 1 its shadow
+out vec2 vS; out vec3 vN; out float vZ, vX;
+void main() {
+  float r = uR, a = uAlpha, arc = clamp(r * a, 0., uS.y);
+  float s = aPart < .5 ? mix(uS.x, 0., aUV.x) : aPart < 1.5 ? mix(0., arc, aUV.x) : mix(arc, uS.y, aUV.x);
+  vec2 foot = uA + mix(uV.x, uV.y, aUV.y) * vec2(-uDir.y, uDir.x);
+  vS = foot + s * uDir;
+  vec3 p, n;
+  if (s <= 0.) { p = vec3(vS, 0.); n = vec3(0., 0., 1.); }
+  else if (s < r * a) { float f = s / r; p = vec3(foot + r * sin(f) * uDir, r * (1. - cos(f))); n = vec3(-sin(f) * uDir, cos(f)); }
+  else { float l = s - r * a; p = vec3(foot + (r * sin(a) + l * cos(a)) * uDir, r * (1. - cos(a)) + l * sin(a)); n = vec3(-sin(a) * uDir, cos(a)); }
+  p.x *= uMirror; n.x *= uMirror;                              // a turn back is the mirror image of a turn forward
+  vN = n; vZ = p.z; vX = p.x;
+  vec2 k = vec2(2. / uView.z, -2. / uView.w), o = vec2(-1., 1.);
+  if (uMode == 1) {                                            // straight down the light onto the table
+    gl_Position = vec4((p.xy - uShadowLight.xy / uShadowLight.z * p.z - uView.xy) * k + o, 0., 1.);
+    return;
+  }
+  float w = (uZc - p.z) / uZc;                                 // a camera above the book: nearer is larger
+  gl_Position = vec4(((uCam - uView.xy) * k + o) * w + (p.xy - uCam) * k, -p.z / uZc * w, w);
+}
+</script>
+
+<script id="sheetfs" type="x-shader">
+in vec2 vS; in vec3 vN; in float vZ, vX;
+uniform vec2 uRes, uHasFB;
+uniform vec4 uAtF, uAtB, uFitF, uFitB;
+uniform sampler2D tF, tB, tShadow;
+uniform float uMirror;
+uniform int uMode;
+out vec4 o;
+void main() {
+  float W = uSize.x, H = uSize.y;
+  vec2 uvF = vec2(uMirror > 0. ? vS.x / W : 1. - vS.x / W, vS.y / H), uvB = vec2(1. - uvF.x, uvF.y);
+  vec4 cF = pg(tF, uHasFB.x, uAtF, uFitF, uvF), cB = pg(tB, uHasFB.y, uAtB, uFitB, uvB);   // read before any discard
+  // Trim the strips to the page, with a smooth edge one screen pixel wide.
+  float inside = min(min(vS.x, W - vS.x), min(vS.y, H - vS.y));
+  float cover = clamp(inside / max(fwidth(inside), 1e-4) + .5, 0., 1.);
+  if (cover <= 0. || vX < -uLeftW) discard;   // one page at a time, a turned page tucks behind the sliver
+  if (uMode == 1) {   // its shadow: strongest just above what it covers, fading as the page rises
+    if (cover < .5) discard;
+    o = vec4(.42 * smoothstep(0., .03 * W, vZ) * exp(-vZ / (.3 * W)), 0., 0., 1.);
+    return;
+  }
+  bool front = (uMirror > 0.) != gl_FrontFacing;               // strips wind clockwise as seen; a mirror turns them over
+  vec3 n = normalize(front ? vN : -vN);
+  vec4 c = front ? cF : cB;
+  if (c.a < .5) discard;
+  c.rgb *= binding(vS.x);
+  // Matte paper lit from the reader's side: it darkens smoothly and steadily as it tilts away, with a
+  // broad, faint sheen where the curve faces the light. No narrow highlight: on a slow, wide curl a
+  // narrow one becomes a hard light-and-dark line. Lying flat, it is exactly the printed page.
+  float tilt = acos(clamp(n.z, -1., 1.)), lit = 1. - .19 * (1. - n.z);       // 1 flat, .81 upright, .62 turned over
+  float sheen = max(pow(max(cos(tilt - .55), 0.), 10.) - pow(cos(.55), 10.), 0.);
+  c.rgb = c.rgb * lit + .05 * sheen;
+  c.rgb *= 1. - .55 * (1. - smoothstep(.5, .04 * W, vZ)) * texture(tShadow, gl_FragCoord.xy / uRes).r;   // only where it lies low
+  o = vec4(c.rgb, cover);                                      // a soft edge, one pixel wide
+}
+</script>
+
+<script id="blurfs" type="x-shader">
+uniform sampler2D tSrc;
+uniform vec2 uStep, uSmall;
+out vec4 o;
+void main() {
+  vec2 uv = gl_FragCoord.xy / uSmall;
+  float s = 0., ws = 0.;
+  for (int i = -6; i <= 6; i++) { float w = exp(-float(i * i) / 18.); s += texture(tSrc, uv + uStep * float(i)).r * w; ws += w; }
+  o = vec4(s / ws, 0., 0., 1.);
+}
+</script>
+
+<script>
+'use strict';
+// Filled in by the Worker: the title, the folder the book's files are in, and its manifest.
+const BOOK = {"title": "Tonico Caf\u00e9", "base": "book/", "manifest": {"v": 1, "title": "Tonico \u00b7 complete menu draft", "files": {"sharp": "sharp/{n}.jpg", "small": "small/{n}.jpg", "atlas": "atlas.jpg", "text": "text.json"}, "atlas": {"w": 675, "h": 836}, "pages": [{"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [0, 0, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [135, 0, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [270, 0, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [405, 0, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [540, 0, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [0, 209, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [135, 209, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [270, 209, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [405, 209, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [540, 209, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [0, 418, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [135, 418, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [270, 418, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [405, 418, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [540, 418, 135, 209]}, {"size": [396, 612], "sharp": [2066, 3193], "small": [1148, 1774], "atlas": [0, 627, 135, 209]}]}};
+const M = BOOK.manifest, N = M.pages.length, SHEETS = Math.floor(N / 2), PI = Math.PI;
+// With an even count the last page is the back cover and the book ends closed; with an odd count it
+// ends open on its last spread, as a printed book would.
+const BACK_COVER = N > 1 && N % 2 === 0;
+const isBack = (p) => BACK_COVER && p === N;
+// The leaf is the commonest page shape (the cover's, on a tie). A page of another shape sits centred
+// on it with paper round it (FIT: x, y, width, height on the leaf), never stretched.
+const ratioOf = (i) => M.pages[i - 1].size[0] / M.pages[i - 1].size[1];
+const RATIO = (() => {
+  const seen = new Map(); let best = 0, most = 0;
+  for (let i = 1; i <= N; i++) { const r = Math.round(ratioOf(i) * 100) / 100, k = (seen.get(r) || 0) + 1; seen.set(r, k); if (k > most) { best = r; most = k; } }
+  return best;
+})();
+const FIT = M.pages.map((_, k) => { const r = ratioOf(k + 1) / RATIO; return Math.abs(r - 1) < 0.01 ? [0, 0, 1, 1] : r > 1 ? [0, (1 - 1 / r) / 2, 1, 1 / r] : [(1 - r) / 2, 0, r, 1]; });
+const ATLAS = M.pages.map(({ atlas: [x, y, w, h] }) => [x / M.atlas.w, y / M.atlas.h, w / M.atlas.w, h / M.atlas.h]);
+const file = (kind, i) => BOOK.base + (i ? M.files[kind].replace('{n}', String(i).padStart(4, '0')) : M.files[kind]);
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SHADOW_LIGHT = (() => { const v = [-0.15, -0.25, 1], l = Math.hypot(...v); return v.map((x) => x / l); })();
+const canvas = $('book');
+// Opaque (the table is drawn too), and no multisampling: every edge is smoothed in the shaders, which
+// leaves the room to draw at the screen's full resolution.
+const gl = canvas.getContext('webgl2', { alpha: false, antialias: false });
+
+// ======================= graphics resources =======================
+// Made once, and again if the phone takes the graphics context away (it may, when switching apps).
+let G = null;
+const ARC = 96;   // strips across the curve
+function initGL() {
+  const HEAD = '#version 300 es\nprecision highp float;\nprecision highp int;\n', text = (id) => $(id).textContent;
+  const FULL = HEAD + 'void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.-1.,0.,1.);}';
+  const program = (vs, fs) => {
+    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+    const p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+    gl.bindAttribLocation(p, 0, 'aUV'); gl.bindAttribLocation(p, 1, 'aPart'); gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    return { p, u: new Proxy({}, { get: (m, n) => (n in m ? m[n] : (m[n] = gl.getUniformLocation(p, n))) }) };
+  };
+  // The strips: one for the flat part, ARC across the curve, one for the straight part.
+  const verts = [], idx = [];
+  for (const [part, n] of [[0, 1], [1, ARC], [2, 1]]) {
+    for (let i = 0; i < n; i++) {
+      const b = verts.length / 3;
+      for (const [t, side] of [[i / n, 0], [(i + 1) / n, 0], [i / n, 1], [(i + 1) / n, 1]]) verts.push(t, side, part);
+      idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+    }
+  }
+  const mesh = gl.createVertexArray(); gl.bindVertexArray(mesh);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 12, 0);
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 12, 8);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+  const blank = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, blank);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+  G = {
+    bg: program(FULL, HEAD + text('common') + text('pagefs') + text('bgfs')),
+    sheet: program(HEAD + text('common') + text('sheetvs'), HEAD + text('common') + text('pagefs') + text('sheetfs')),
+    blur: program(FULL, HEAD + text('blurfs')),
+    mesh, count: idx.length, empty: gl.createVertexArray(), blank,
+    aniso: gl.getExtension('EXT_texture_filter_anisotropic'),
+    shadow: { w: 0, h: 0, t: [], f: [] },
+  };
+  G.maxAniso = G.aniso ? Math.min(8, gl.getParameter(G.aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)) : 0;
+  sharp.clear(); sharpWidths.clear(); sheet.t = null;
+}
+// The lifted page's shadow is drawn small, blurred, then laid over what it covers.
+function shadowTargets(w, h) {
+  const s = G.shadow;
+  s.t.forEach((t) => gl.deleteTexture(t)); s.f.forEach((f) => gl.deleteFramebuffer(f));
+  Object.assign(s, { w, h, t: [], f: [] });
+  for (let i = 0; i < 2; i++) {
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, w, h, 0, gl.RED, gl.UNSIGNED_BYTE, null);
+    for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+    const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    s.t.push(t); s.f.push(f);
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+
+// ======================= pages: never blank =======================
+// Three encoded tiers: atlas fallback, screen-sized pages and full pages for larger screens/zoom.
+// Request the smallest source covering the physical display, without waiting for the atlas. Both
+// page sources share one worker queue and one bounded GPU cache. Neighbours load only after the
+// visible/destination pages; a full source never waits for an undersized preview first.
+// `sharp` holds the best available page, including an undersized fallback after a failed request.
+// Actual decoded width decides whether it needs an upgrade; there is never a duplicate texture.
+const sharp = new Map(), sharpWidths = new Map();
+// Retain compressed bytes separately from the much larger GPU textures. Revisiting a page or
+// restoring graphics can decode these again without a network round trip. This cache lives only
+// in this document; availability polling and HTTP cache policy are unchanged. The budget excludes
+// active downloads/decodes, which remain bounded by the existing job queue.
+const pageBytes = new Map(), PAGE_BYTES_LIMIT = 8 * 1024 * 1024;
+const warmSkipped = new Set(); // files that did not fit; foreground requests still load normally
+let pageBytesSize = 0;
+function forgetBytes(url) {
+  pageBytesSize -= pageBytes.get(url)?.size || 0;
+  pageBytes.delete(url);
+}
+function rememberBytes(url, blob) {
+  if (blob.size > PAGE_BYTES_LIMIT) return;
+  forgetBytes(url);
+  while (pageBytesSize + blob.size > PAGE_BYTES_LIMIT) forgetBytes(pageBytes.keys().next().value);
+  pageBytes.set(url, blob); pageBytesSize += blob.size;
+}
+// A picture that failed is tried again later, waiting longer each time, while the others go on loading.
+const failed = new Map();   // file → { n: failures so far, at: when to try again }
+const due = (url) => !failed.has(url) || failed.get(url).at <= performance.now();
+const failure = (url) => {
+  const n = (failed.get(url)?.n ?? 0) + 1, wait = Math.min(30000, 1500 * 2 ** (n - 1));
+  failed.set(url, { n, at: performance.now() + wait });
+  setTimeout(prefetch, wait + 50);   // a timer may fire a moment early by this clock
+  return n;
+};
+const here = () => visible()[0];
+// Committed destination first, then the sheet being turned and the pages still in view.
+// A decorative corner peek must not compete with the page the reader is reading.
+function demanded() {
+  const tr = turn && turn.kind !== 'peek' ? turn : null;
+  const goal = tr ? (spread ? [L(tr.goal), R(tr.goal)] : [tr.goal]) : [];
+  return [...goal, ...(tr ? [tr.front, tr.back, tr.under, tr.opposite] : []), ...visible()]
+    .filter((i, k, a) => i >= 1 && i <= N && a.indexOf(i) === k);
+}
+function readingOrder() {
+  const pages = demanded(), v = pages[0], cost = (i) => (i >= v ? i - v : 2 * (v - i) - 1);
+  const order = Array.from({ length: N }, (_, k) => k + 1).sort((a, b) => cost(a) - cost(b));
+  return [...pages, ...order].filter((i, k, a) => a.indexOf(i) === k);
+}
+const KEEP = () => 8;
+const sharpWanted = () => readingOrder().slice(0, KEEP());
+// Lets go of the pictures of pages no longer wanted, once more than `limit` are held.
+function trim(map, keep, limit) {
+  const order = [...map.keys()].sort((a, b) => keep.indexOf(a) - keep.indexOf(b));
+  for (const i of order.filter(i => !keep.includes(i)).concat(order.filter(i => keep.includes(i)).reverse())) {
+    if (map.size <= limit) break;
+    gl.deleteTexture(map.get(i)); map.delete(i);
+    sharpWidths.delete(i);
+  }
+}
+const sheet = { t: null };
+const WHOLE = [0, 0, 1, 1];
+function texture(i) {   // the best picture of page i there is so far, and where in it the page lies
+  if (i < 1 || i > N) return null;
+  const t = sharp.get(i);
+  if (t) return { t, at: WHOLE };
+  return sheet.t ? { t: sheet.t, at: ATLAS[i - 1] } : null;
+}
+function upload(bm) {
+  const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bm); bm.close();
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  if (G.aniso) gl.texParameterf(gl.TEXTURE_2D, G.aniso.TEXTURE_MAX_ANISOTROPY_EXT, G.maxAniso);
+  return t;
+}
+// A sharp picture at `w` pixels across, decoded and scaled in a worker: scaling takes a slow
+// phone a tenth of a second, which would stall a turning page. Where a browser ignores the size asked
+// for, it is scaled with a canvas (the page's own, if the worker has none).
+async function scale(bm, w) {
+  if (bm.width <= w + 1) return bm;
+  const h = Math.round(bm.height * w / bm.width), c = self.OffscreenCanvas ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h });
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(bm, 0, 0, w, h); bm.close();
+  return createImageBitmap(c);
+}
+const decoder = (() => {
+  try {
+    const src = `${scale}
+onmessage = async ({ data: [id, blob, w] }) => {
+  try {
+    let bm = await createImageBitmap(blob, { resizeWidth: w, resizeQuality: 'high' });
+    if (bm.width > w + 1 && self.OffscreenCanvas) bm = await scale(bm, w);
+    postMessage([id, bm], [bm]);
+  } catch (e) { postMessage([id, undefined]); }
+};`;
+    const worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' }))), waiting = new Map();
+    let n = 0, broken = false;
+    const answer = (id, bm) => { const done = waiting.get(id); if (!done) { bm?.close(); return; } waiting.delete(id); done(bm); };
+    worker.onmessage = ({ data: [id, bm] }) => answer(id, bm);
+    // A worker that cannot run (a browser quirk, a content policy) hands every picture back to the page.
+    worker.onerror = () => { broken = true; [...waiting.keys()].forEach((id) => answer(id, undefined)); };
+    return (blob, w, signal) => broken ? Promise.resolve(undefined) : new Promise((resolve) => {
+      if (signal.aborted) { resolve(null); return; }
+      const id = ++n, cancel = () => answer(id, null);
+      const timer = setTimeout(cancel, 30000);
+      waiting.set(id, (bm) => { clearTimeout(timer); signal.removeEventListener('abort', cancel); resolve(bm); });
+      signal.addEventListener('abort', cancel, { once: true });
+      worker.postMessage([id, blob, w]);
+    });
+  } catch { return null; }
+})();
+// Main-thread resizing can stall animation even through the async bitmap API.
+// Screen-sized sources can decode earlier; resizing still waits for a settled page.
+const afterTurn = async (signal) => {
+  while (turning() && !signal.aborted) await new Promise((resolve) => {
+    const done = () => { clearTimeout(timer); signal.removeEventListener('abort', done); resolve(); };
+    const timer = setTimeout(done, 60); signal.addEventListener('abort', done, { once: true });
+  });
+};
+// Native bitmap decoding cannot be interrupted. Release its slot on cancellation and close
+// any result arriving later, just as the worker's message handler does.
+function bitmapResult(promise, signal) {
+  return new Promise((resolve, reject) => {
+    const cancel = () => resolve(null);
+    signal.addEventListener('abort', cancel, { once: true });
+    if (signal.aborted) cancel();
+    promise.then((bm) => { if (signal.aborted) bm?.close(); else resolve(bm); }, reject)
+      .finally(() => signal.removeEventListener('abort', cancel));
+  });
+}
+// Cancellation releases the page job, but native decoding/conversion keeps running.
+// Hold capacity through scaling too, so interrupted turns cannot accumulate that work.
+const nativePending = new Set();
+async function nativeBitmap(blob, w, small, signal) {
+  while (!signal.aborted && nativePending.size >= 2) {
+    await bitmapResult(Promise.race(nativePending).then(() => null, () => null), signal);
+  }
+  if (signal.aborted) return null;
+  const pending = (async () => {
+    if (!small) await afterTurn(signal);
+    if (signal.aborted) return null;
+    const bm = await createImageBitmap(blob, small ? {} : { resizeWidth: w, resizeQuality: 'high' });
+    try {
+      if (bm.width > w + 1) await afterTurn(signal);
+      if (signal.aborted) { bm.close(); return null; }
+      return await scale(bm, w);
+    } catch (error) { bm.close(); throw error; }
+  })();
+  nativePending.add(pending);
+  const release = () => nativePending.delete(pending);
+  pending.then(release, release);
+  return bitmapResult(pending, signal);
+}
+async function decode(url, w, job) {
+  const signal = job.controller.signal;
+  // HTML already checked availability, and versioned image URLs are immutable. Reuse the
+  // browser's completed body too; a decode/network failure requires a genuine fresh retry.
+  const blob = pageBytes.get(url) || await fetchBlob(url, { cache: failed.has(url) ? 'reload' : 'force-cache', signal, priority: demanded().includes(job.i) ? 'high' : 'low' },
+    () => job.warm ? PAGE_BYTES_LIMIT - pageBytesSize : Infinity);
+  if (!blob) { warmSkipped.add(url); return null; }
+  if (signal.aborted) return null;
+  if (job.warm) {
+    // Speculation can use spare capacity, never evict previously downloaded pages. A completed
+    // file that cannot fit is skipped until demanded, rather than downloaded in a retry loop.
+    if (pageBytesSize + blob.size <= PAGE_BYTES_LIMIT) rememberBytes(url, blob);
+    else warmSkipped.add(url);
+    return null;
+  }
+  rememberBytes(url, blob);
+  try {
+    let bm = decoder ? await decoder(blob, w, signal) : undefined;
+    if (bm === undefined) {
+      const [sw, sh] = M.pages[job.i - 1][job.tier];
+      bm = await nativeBitmap(blob, w, job.tier === 'small' && Math.max(sw, sh) <= 4096 && sw * sh <= 2100000, signal);
+    }
+    if (signal.aborted) { bm?.close(); return null; }
+    if (!bm) throw new Error(`could not load ${url}`);
+    if (bm.width > w + 1) await afterTurn(signal);
+    if (signal.aborted) { bm.close(); return null; }
+    const result = await bitmapResult(scale(bm, w), signal);
+    if (result) failed.delete(url);
+    return result;
+  } catch (error) {
+    // A corrupt response must not poison subsequent retries. Cancellation leaves complete bytes useful.
+    if (!signal.aborted) forgetBytes(url);
+    throw error;
+  }
+}
+const loading = { small: false, sharp: false };
+let ready = false, smallJob = null;
+function markReady() {
+  if (ready || (!sheet.t && !visible().every(i => texture(i)))) return;
+  ready = true; document.body.classList.add('ready'); performance.mark('cover');
+  setTimeout(nudge, 1400); loadText();
+}
+// Once, on the cover: its corner lifts a little and settles back, the way a page invites a turn.
+function nudge() {
+  if (opened || N < 2 || pos !== first() || turn || drag || reduceMotion) return;
+  const C = [W - 1, H - 1];
+  turn = makeTurn(pos, pos + 1, 'peek', C); turn.T = attach(C, [C[0] - 0.07 * W, C[1] - 0.05 * W]); draw();
+  setTimeout(() => { if (turn && turn.kind === 'peek' && !drag) { turn.leaving = true; turn.T = turn.C; draw(); } }, 700);
+}
+// The atlas is a fallback, not a prerequisite for readable page requests.
+async function loadSmall() {
+  if (loading.small || sheet.t || !due(file('atlas'))) return;
+  loading.small = true;
+  const job = new AbortController(); smallJob = job;
+  const signal = job.signal, context = G;
+  try {
+    const early = window.atlasFirst; window.atlasFirst = null;
+    const bm = await (early ? early.catch(() => fetchBlob(file('atlas'), { signal })) : fetchBlob(file('atlas'), { signal })).then(createImageBitmap);
+    if (G !== context || signal.aborted) { bm.close(); return; }
+    sheet.t = upload(bm); markReady(); draw();
+  } catch {
+    if (!signal.aborted && G === context && failure(file('atlas')) >= 3) { G = null; plain(); }
+  } finally { smallJob = null; loading.small = false; }
+  if (signal.aborted && G && !sheet.t) loadSmall();
+}
+// The sharp pictures: decoded in a worker while a page turns, then uploaded one per frame before drawing.
+// Nearby pages keep progressing during a run of turns. Decoded as wide as the page shows on screen, in steps, so a
+// small change of window size does not decode every page again.
+const sharpWidth = () => { const w = W * dpr; return w <= 1080 ? 1080 : w <= 1620 ? 1620 : 1e5; };
+let sharpIs = 0;
+const sharpJobs = new Map();
+const turning = () => turn && turn.kind !== 'peek';
+const neededWidth = (i) => Math.min(M.pages[i - 1].sharp[0], Math.ceil(W * dpr * FIT[i - 1][2]));
+const needsSharp = (i) => !sharp.has(i) || (sharpWidths.get(i) || 0) + 1 < neededWidth(i);
+const sourceWidth = (i, tier) => Math.min(M.pages[i - 1][tier][0], Math.ceil(sharpIs * FIT[i - 1][2]));
+function sourceFor(i) {
+  const held = sharpWidths.get(i) || 0, active = sharpJobs.get(i);
+  // A preferred-source retry becoming due must not discard a useful fallback transfer.
+  if (active && !active.controller.signal.aborted && active.context === G &&
+      active.width === sourceWidth(i, active.tier) && active.width > held + 1) return active;
+  const p = M.pages[i - 1], preferred = p.small[0] >= neededWidth(i) ? 'small' : 'sharp';
+  const tiers = [preferred, preferred === 'small' ? 'sharp' : 'small'];
+  // Already downloaded full detail also serves a smaller display. Never choose cached undersized
+  // bytes ahead of an adequate source, or count an enlarged preview as additional detail.
+  const cached = tiers.find(tier => pageBytes.has(file(tier, i)) && sourceWidth(i, tier) >= neededWidth(i));
+  for (const tier of [...(cached ? [cached] : []), ...tiers]) {
+    const url = file(tier, i), width = sourceWidth(i, tier);
+    if (due(url) && width > held + 1) return { url, width, tier };
+  }
+  return null;
+}
+// Two foreground pages progress independently; only one speculative neighbour loads at a time.
+function sharpNext() {
+  const missing = sharpWanted().filter((i) => needsSharp(i) && sourceFor(i));
+  const foreground = missing.filter((i) => demanded().includes(i));
+  return foreground.length ? foreground.slice(0, 2) : missing.slice(0, 1);
+}
+function warmNext() {
+  if (document.hidden || turning() || drag || pageBytesSize >= PAGE_BYTES_LIMIT || sharpWanted().some(needsSharp)) return [];
+  const i = readingOrder().slice(KEEP(), KEEP() * 2).find(i => {
+    const source = sourceFor(i);
+    return source && !pageBytes.has(source.url) && !warmSkipped.has(source.url);
+  });
+  return i ? [i] : [];
+}
+function loadSharp() {
+  if (!G) return;
+  const ordinary = sharpNext();
+  // Keep a useful in-flight transfer when the other slot can satisfy foreground work.
+  // Two demanded pages still take both slots; speculation must never hold either of them up.
+  if (ordinary.length === 1) {
+    const active = [...sharpJobs.values()].find(j => !j.controller.signal.aborted &&
+      !ordinary.includes(j.i) && sharpWanted().includes(j.i));
+    if (active) ordinary.push(active.i);
+  }
+  const next = ordinary.length ? ordinary : warmNext();
+  for (const [i, job] of sharpJobs) if (!next.includes(i) || job.url !== sourceFor(i)?.url || job.width !== sourceFor(i)?.width || job.context !== G) job.controller.abort();
+  for (const i of next) {
+    // A warming transfer entering the nearby/visible set continues under the same owner and
+    // decodes on completion. Navigation must not cancel it just to fetch the same URL again.
+    const active = sharpJobs.get(i);
+    if (active) { if (ordinary.includes(i)) active.warm = false; continue; }
+    if (sharpJobs.size >= 2) continue;
+    const { url, width, tier } = sourceFor(i);
+    const job = { i, url, width, tier, context: G, controller: new AbortController(), bm: null, done: null, warm: !ordinary.length };
+    sharpJobs.set(i, job); loading.sharp = true;
+    runSharp(job);
+  }
+}
+document.addEventListener('visibilitychange', loadSharp);
+async function runSharp(job) {
+  const { i, controller } = job;
+  try {
+    const bm = await decode(job.url, job.width, job);
+    if (!bm) return;
+    if (controller.signal.aborted || G !== job.context) { bm.close(); return; }
+    // Stay registered through upload. An abort releases this wait and closes the decoded bitmap.
+    await new Promise((resolve) => {
+      const done = () => { controller.signal.removeEventListener('abort', done); job.bm?.close(); job.bm = null; resolve(); };
+      job.bm = bm; job.done = done; controller.signal.addEventListener('abort', done, { once: true }); draw();
+    });
+  } catch { if (!controller.signal.aborted) failure(job.url); }
+  finally {
+    if (sharpJobs.get(i) === job) sharpJobs.delete(i);
+    loading.sharp = sharpJobs.size > 0; loadSharp();
+  }
+}
+// Admit at most one upload before drawing, including during turns. Waiting for an idle turn
+// holds both decode slots and prevents the next pages becoming readable during rapid navigation.
+function uploadSharp() {
+  const job = readingOrder().map((i) => sharpJobs.get(i)).find((j) => j?.bm);
+  if (!job) return;
+  const { i, bm } = job, selected = sourceFor(i);
+  if (!job.controller.signal.aborted && G === job.context && job.url === selected?.url &&
+      job.width === selected?.width && sharpWanted().includes(i) && needsSharp(i)) {
+    const width = bm.width, old = sharp.get(i);
+    sharp.set(i, upload(bm)); job.bm = null; sharpWidths.set(i, width);
+    if (old) gl.deleteTexture(old);
+    trim(sharp, sharpWanted(), KEEP()); markReady();
+  }
+  job.done(); draw();
+}
+const prefetch = () => { if (G) { loadSmall(); loadSharp(); } };
+// Each page's text, in the page for screen readers.
+async function loadText() {
+  try {
+    const text = await fetchBlob(file('text')).then((b) => b.text()).then(JSON.parse);
+    if (!Array.isArray(text)) throw new Error('not page text');
+    $('text').replaceChildren(...text.map((t, k) => {
+      const page = document.createElement('section'), h = document.createElement('h2'), p = document.createElement('p');
+      h.textContent = `Page ${k + 1}`; p.textContent = t || 'This page has no text.'; page.append(h, p);
+      return page;
+    }));
+  } catch { if (failure(file('text')) < 4) setTimeout(loadText, failed.get(file('text')).at - performance.now()); }
+}
+
+// ======================= the book =======================
+// Open wide, spread s shows pages L(s) and R(s); the cover and back stand alone. One page at a time,
+// position k shows page k, with the previous page open to the left (only a sliver of its blank inner
+// margin in view); the back cover, last (in a book with an even page count), is a closed book.
+const L = (s) => (s === 0 ? 0 : 2 * s), R = (s) => (2 * s + 1 <= N ? 2 * s + 1 : 0);
+let spread = true, pos = 0, W = 0, H = 0, dpr = 1, Zc = 1, stageW = 0, stageH = 0, shift = 0;
+const first = () => (spread ? 0 : 1), last = () => (spread ? SHEETS : N);
+function visible() { return spread ? [L(pos), R(pos)].filter(Boolean) : [pos]; }
+function rest(p) {   // the pages lying open at position p
+  if (spread) return { left: L(p), right: R(p) };
+  if (isBack(p)) return { left: N, right: 0 };           // closed on the back cover, centred (shiftOf)
+  return { left: p > 1 ? p - 1 : 0, right: p };
+}
+// The pages in a turn from position `from` to `to` (usually the next or previous; any, for a jump).
+// The turning sheet shows `front`, then `back`; `under` is revealed beneath it; `opposite` is the page
+// it lands on. One page at a time the back of the turning page is the page it turns to.
+function between(from, to) {
+  if (spread) return to > from ? { front: R(from), back: L(to), under: R(to), opposite: L(from) }
+                               : { front: L(from), back: R(to), under: L(to), opposite: R(from) };
+  // One page at a time: the last sheet carries the back cover on its reverse and closes the book, as
+  // in the two-page view (forward to N, and its mirror image back from N). Other turns back are a
+  // turn forward in reverse (backTurn).
+  if (isBack(to)) return { front: from, back: N, under: 0, opposite: from - 1 };
+  if (isBack(from)) return { front: N, back: to, under: to - 1, opposite: 0 };
+  return { front: from, back: to, under: to, opposite: from > 1 ? from - 1 : 0 };
+}
+// How many sheets show at each side as the page block's edges; past 48 (the kit's longest book) the
+// block looks no thicker.
+function stack(a, b = a) {
+  const lo = Math.min(a, b), hi = Math.max(a, b);
+  const n = spread ? [lo, SHEETS - hi] : [Math.ceil((lo - 1) / 2), Math.ceil((N - hi) / 2)];
+  return n.map((k) => (k > 0 ? 0.8 + 0.3 * Math.min(k, 48) : 0));
+}
+// A closed book sits in the middle: on a wide screen either cover; one page at a time, the back cover.
+const openAt = (p) => (spread ? p > 0 && !(BACK_COVER && p === SHEETS) : p > 1 && !isBack(p)) ? 1 : 0;
+let open = 1, leftW = 1e5;
+const sliver = () => Math.max(24, 0.07 * W);   // how much of the page to the left shows, one page at a time
+const shiftOf = (p) => (spread ? (p === 0 ? -W / 2 : BACK_COVER && p === SHEETS ? W / 2 : 0) : isBack(p) ? W : 0);
+
+// A turn in progress, worked out as a turn forward: a turn back is its mirror image (m = -1).
+//   C  the point of the page's outer edge being moved, in the page's own coordinates
+//   P  where that point is shown now, V its velocity (book px per ms), T where it is heading
+//   kind 'drag' | 'peek' | 'auto'; path: for 'auto', the motion it follows; goal: position afterwards
+let turn = null;
+const flip = ([x, y]) => [-x, y];
+function makeTurn(from, to, kind, C) { return { ...between(from, to), from, to, m: to > from ? 1 : -1, C, P: C.slice(), V: [0, 0], kind, goal: from }; }
+// One page at a time the spine is at the screen's left edge, so a turn back is a turn forward played
+// in reverse (rev): the earlier page comes in curled from the left edge and settles flat, as in a
+// reader app. It starts turned over (P at the mirror of C) and ends lying flat (P at C).
+const reversed = (to) => !spread && to < pos && !isBack(pos);   // opening from the back cover is mirrored, as wide
+function backTurn(to, kind, C) { return Object.assign(makeTurn(to, pos, kind, C), { rev: true, P: flip(C), goal: pos }); }
+
+// ======================= the shape of a turning page =======================
+// The moved point is carried to P. The page lifts beyond a bend line between them (at any angle),
+// curves round, and runs on. Early in a turn the lifted part arches; by the end it lies flat on the
+// other side. The spine never moves.
+const progressOf = (C, P) => clamp(Math.hypot(C[0] - P[0], C[1] - P[1]) / (2 * Math.max(C[0], 0.25 * W)), 0, 1);
+function geom(C, P) {
+  let vx = C[0] - P[0], vy = C[1] - P[1], len = Math.hypot(vx, vy);
+  if (len < 0.01) { vx = 1; vy = 0; len = 0.01; }
+  const dir = [vx / len, vy / len], t = progressOf(C, P), rmin = 0.012 * W;
+  // The bend line lies a distance d back from C. Both ends of the spine must stay on its flat side,
+  // so d may not exceed how far back from C either end lies.
+  const dmax = Math.min(C[0] * dir[0] + C[1] * dir[1], C[0] * dir[0] + (C[1] - H) * dir[1]);
+  let f = 0.92 * (1 - t * t);                                // how much of the lifted part curves rather than runs straight
+  // For a bend through a (radius r = c·d, never sharper than rmin), the distance d that brings C to P.
+  const fit = (a, rm = rmin) => {
+    const c = f / a, sa = Math.sin(a), ca = Math.cos(a);
+    let d = len / (1 - c * sa - (1 - c * a) * ca), r = c * d;
+    if (r < rm) { r = rm; d = (len + r * sa - r * a * ca) / (1 - ca); }
+    return { a, r, d };
+  };
+  let g = fit(PI * (0.35 + 0.65 * Math.pow(t, 1.1)));
+  if (g.d > dmax) {                                          // too steep for the spine: lay the page further over, smoothly
+    if (fit(PI).d > dmax) {                                  // even laid right over: curve it less, then fold it tighter
+      f = clamp(2 - len / dmax, 0, f); g = fit(PI);
+      if (g.d > dmax) g = fit(PI, clamp((2 * dmax - len) / PI, 0, rmin));
+    } else { let lo = g.a, hi = PI; for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (fit(m).d > dmax) lo = m; else hi = m; } g = fit(hi); }
+  }
+  const A = [C[0] - g.d * dir[0], C[1] - g.d * dir[1]], perp = [-dir[1], dir[0]];
+  // The page's extent along and across the bend line, for the strips.
+  const s = [], v = [];
+  for (const [x, y] of [[0, 0], [W, 0], [0, H], [W, H]]) { s.push((x - A[0]) * dir[0] + (y - A[1]) * dir[1]); v.push((x - A[0]) * perp[0] + (y - A[1]) * perp[1]); }
+  // Let the curl flatten completely. A radius floor leaves a raised, displaced sheet that snaps
+  // into place on landing; bend() and the vertex shader only divide inside a nonzero curve.
+  return { A, dir, r: Math.max(0, g.r), a: g.a, t, S: [Math.min(...s) - 1, Math.max(...s) + 1], V: [Math.min(...v) - 1, Math.max(...v) + 1] };
+}
+function bend([x, y], g) {
+  const s = (x - g.A[0]) * g.dir[0] + (y - g.A[1]) * g.dir[1];
+  if (s <= 0) return [x, y, 0];
+  let q, z;
+  if (s < g.r * g.a) { const f = s / g.r; q = g.r * Math.sin(f); z = g.r * (1 - Math.cos(f)); }
+  else { const l = s - g.r * g.a; q = g.r * Math.sin(g.a) + l * Math.cos(g.a); z = g.r * (1 - Math.cos(g.a)) + l * Math.sin(g.a); }
+  return [x + (q - s) * g.dir[0], y + (q - s) * g.dir[1], z];
+}
+const camera = () => [(spread ? 0 : W / 2) - shift, H / 2];
+const project = ([x, y, z]) => { const c = camera(), k = Zc / (Zc - z); return [c[0] + (x - c[0]) * k, c[1] + (y - c[1]) * k]; };
+// The camera's perspective moves a raised point. Aim a little off so it lands exactly at P; the aim
+// carries over from frame to frame, so it never jitters.
+function shape(tr) {
+  let aim = tr.aim || tr.P, g;
+  for (let i = 0; i < 3; i++) {
+    g = geom(tr.C, aim);
+    const [x, y, z] = bend(tr.C, g), seen = project([tr.m * x, y, z]);
+    aim = attach(tr.C, [aim[0] + tr.P[0] - tr.m * seen[0], aim[1] + tr.P[1] - seen[1]]);
+  }
+  tr.aim = aim;
+  return geom(tr.C, aim);
+}
+// The page stays attached at the spine: the moved point cannot go further from either end of the
+// spine than it is on the page.
+function attach(C, [x, y]) {
+  for (const sy of [0, H]) {
+    const reach = Math.hypot(C[0], C[1] - sy), d = Math.hypot(x, y - sy);
+    if (d > reach) { x *= reach / d; y = sy + (y - sy) * reach / d; }
+  }
+  return [x, y];
+}
+
+// ======================= layout =======================
+// The drawing covers the window. The book is as large as comfortable margins allow, with the buttons
+// at bottom-right (or beside it, on a short wide screen). Laid out again whenever
+// the window changes size, before it is painted.
+const SPREAD_HEIGHT = .9;   // use two pages only while each stays close to the available single-page height
+const embedded = new URLSearchParams(location.search).has('embedded');
+if (embedded) {
+  document.body.classList.add('embedded');
+  document.querySelector('#controls > .pill').append($('fullscreenBtn'));
+}
+let bookX = 0, bookY = 0;   // where the middle of the book sits in the window (CSS px)
+function layout() {
+  clearBookPointers();
+  if (turn) { pos = turn.goal; stopTurn(); }                 // a turn interrupted by a resize simply ends
+  let keep = here() || 1;
+  if (embedded && stageW === 0 && canvas.clientWidth > canvas.clientHeight) keep = 4;
+  const bar = $('controls'), safe = getComputedStyle($('safe'));
+  sizeCount();
+  stageW = canvas.clientWidth; stageH = canvas.clientHeight;
+  const [st, sr, sb, sl] = ['Top', 'Right', 'Bottom', 'Left'].map((k) => parseFloat(safe['padding' + k]) || 0);
+  const aw = stageW - sl - sr, ah = stageH - st - sb;
+  if (embedded) {
+    // Within the device, reserve only the title and control rows. The open book fills the rest.
+    bar.classList.add('compact');bar.classList.remove('side');
+    const title=$('title');title.hidden=true;
+    Object.assign(title.style,{left:`${sl+10}px`,top:`${st+9}px`});
+    spread=aw>ah;
+    const top=8,bottom=42,edge=8;
+    H=Math.max(1,Math.floor(Math.min(ah-top-bottom,(aw-edge*2)/(RATIO*(spread?2:1)))));
+    W=Math.floor(H*RATIO);bookX=sl+aw/2;bookY=st+top+(ah-top-bottom)/2;
+    for(const id of ['prev','next','zoomBtn','count','jump'])Object.assign($(id).style,{left:'',top:''});
+    Object.assign(bar.style,{left:'50%',top:'auto',right:'auto',bottom:`${sb+5}px`,transform:'translateX(-50%)'});
+  } else {
+  // Touch screens get the smaller buttons, in proportion to the book and the title.
+  bar.classList.toggle('compact', !(finePointer && aw >= 1000));
+  bar.classList.toggle('side', ah < 460 && aw > ah * 1.3);
+  const side = bar.classList.contains('side'), bw = bar.offsetWidth, bh = bar.offsetHeight;
+  const sideMargin = Math.max(64, Math.max($('count').getBoundingClientRect().width, $('jump').getBoundingClientRect().width) + 8); // room for the whole counter beside a wide page
+  const gap = 8;   // between the book and its buttons
+  // The title sits in the top left corner; where the book would run into it, the book starts below it.
+  const title = $('title');
+  title.hidden = side; title.classList.toggle('compact', aw < 640);
+  const tx = sl + 16, ty = st + 12;
+  Object.assign(title.style, { left: `${tx}px`, top: `${ty}px` });
+  const tw = side ? 0 : title.offsetWidth, th = side ? 0 : title.offsetHeight;
+  const at = (el, x, y) => Object.assign(el.style, x == null ? { left: '', top: '' } : { left: `${x}px`, top: `${y}px` });
+  const parts = ['prev', 'next', 'zoomBtn', 'count', 'jump'].map($);
+  const topControls = [...document.querySelectorAll('#fullscreenControl, .report')].map(el => el.getBoundingClientRect()).filter(r => r.width && r.height);
+  const place = (reserve, beside = 0) => {
+    // Margins first, the book takes the rest: slim margins above and below and 4% of the width at the
+    // sides (or room for the title beside it). On a short wide screen the buttons sit beside it.
+    const top0 = st + reserve, ah0 = ah - reserve;
+    const my = 8;
+    const mt = reserve ? 0 : my;   // under the title, its band is the top margin
+    let shh = ah0 - mt - my - (side ? 0 : bh + gap);
+    const size = (mx) => {
+      const sw = aw - 2 * (side ? Math.max(mx, sideMargin) : mx);
+      const one = Math.min(shh, sw / RATIO), two = Math.min(shh, sw / 2 / RATIO);
+      spread = two >= one * SPREAD_HEIGHT;
+      H = Math.max(1, Math.floor(spread ? two : one)); W = Math.floor(H * RATIO);
+    };
+    const fit = () => {
+      size(Math.max(12, 0.04 * aw, beside));
+      if (beside && !spread) size(Math.max(12, 0.04 * aw, beside + sliver()));
+    };
+    fit();
+    // The pill lives at bottom-right. When it fits entirely beside the larger book, its row need
+    // not steal any height. Otherwise reserve the compact band beneath the pages.
+    if (!side) {
+      shh += bh + gap; fit();
+      const besideControls = (aw - (spread ? 2 * W : W)) / 2 >= bw + 16;
+      if (!besideControls) { shh -= bh + gap; fit(); }
+    }
+    const bookW = spread ? 2 * W : W;
+    if (side) {
+      bookX = sl + aw / 2; bookY = st + ah / 2;
+      const xL = (sl + bookX - bookW / 2) / 2, xR = (bookX + bookW / 2 + sl + aw) / 2, foot = bookY + H / 2 - 20;
+      Object.assign(bar.style, { right: '', bottom: '' });
+      at(bar, 0, 0); at(parts[0], xL, bookY); at(parts[2], xL, foot); at(parts[1], xR, bookY); at(parts[3], xR, foot); at(parts[4], xR, foot);
+    } else {
+      // Centre only genuinely unused room when the page is limited by width.
+      const top = top0 + mt + Math.max(0, (shh - H) / 2);
+      bookX = sl + aw / 2; bookY = top + H / 2;
+      parts.forEach((el) => at(el));
+      Object.assign(bar.style, { left: 'auto', top: 'auto', right: `${sr + 8}px`, bottom: `${sb + 8}px` });
+    }
+    const left = bookX - bookW / 2 - (spread ? 0 : sliver()), right = bookX + bookW / 2, top = bookY - H / 2;
+    let needed = !side && left < tx + tw + 16 && top < ty + th + 10 ? ty - st + th + 12 : 0;
+    for (const r of topControls) if (right > r.left - 8 && left < r.right + 8 && top < r.bottom + 8) needed = Math.max(needed, r.bottom - st + 8);
+    return needed;
+  };
+  // If the book would run into the title, the title goes either beside the book (the book narrower)
+  // or above it (the book shorter): whichever leaves the bigger book.
+  const reserve = place(0);
+  if (reserve) {
+    const besideIt = Math.max(side ? 0 : tx + tw + 20 - sl, ...topControls.map(r => sl + aw - r.left + 8));
+    const pages = spread;   // prefer a spread only while its pages stay comfortably sized
+    place(0, besideIt); const wide = spread === pages ? H : 0;
+    if (place(reserve) || H < wide * 1.04 || (pages && !spread && wide >= H * SPREAD_HEIGHT)) place(0, besideIt);   // keep a spread only at the same size threshold used above
+  }
+  }
+  pos = spread ? Math.floor(keep / 2) : keep;
+  dpr = Math.min(devicePixelRatio || 1, 3);   // the screen's own resolution, so text is as sharp as the picture
+  Zc = 4 * Math.max(H, spread ? 2 * W : W);
+  canvas.width = Math.max(1, Math.round(stageW * dpr)); canvas.height = Math.max(1, Math.round(stageH * dpr));
+  shadowTargets(Math.ceil(canvas.width / 6), Math.ceil(canvas.height / 6));
+  sharpIs = sharpWidth();   // keep existing detail until a larger replacement is ready
+  ui(); prefetch(); placeHint();
+}
+const x0 = () => camera()[0] - bookX, y0 = () => H / 2 - bookY;
+// The cover's hint: beside its lower right corner on a wide screen, under it (by the buttons) on a phone.
+let opened = false;
+const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
+function placeHint() {
+  const hint = $('hint'), bar = $('controls').getBoundingClientRect();
+  $('hintText').textContent = finePointer ? 'Click to open' : 'Tap to open';
+  const cx = bookX + W - ((spread ? 0 : W / 2) - shiftOf(first())), cy = bookY + H / 2;   // the cover's corner on screen
+  if ($('controls').classList.contains('side')) { hint.hidden = true; return; }   // no room; the corner lift still invites
+  const beside = !$('controls').classList.contains('compact') && cx + 130 < stageW;
+  hint.classList.toggle('below', !beside); hint.hidden = false;   // measured while shown
+  const hw = hint.offsetWidth, hh = hint.offsetHeight;
+  const at = beside ? [cx + 12, cy - hh - 6] : [cx - hw, bar.bottom + 8];
+  const fits = beside || (at[0] > bar.right + 8 || at[1] + hh < stageH - 4);
+  Object.assign(hint.style, { left: `${at[0]}px`, top: `${at[1]}px` });
+  hint.hidden = !fits;
+}
+const hintShown = () => N > 1 && !opened && pos === first() && !(turn && turn.kind !== 'peek');   // book coordinates of the window's top left
+
+// ======================= drawing (only when something changes) =======================
+let raf = 0, lastFrame = 0, relayout = true;
+function draw() { if (!raf) raf = requestAnimationFrame(frame); }
+function frame() {
+  // Use the same clock as turn creation. A lazy iframe's animation-frame timestamp can lag
+  // performance.now(), otherwise a released page freezes until that clock catches up.
+  const now = performance.now();
+  raf = 0;
+  if (!G || gl.isContextLost()) return;
+  if (relayout && !turn && !drag) { relayout = false; layout(); }
+  const dt = lastFrame ? Math.min(now - lastFrame, 50) : 16;
+  const moving = turn ? advance(turn, now, dt) : false;
+  uploadSharp(); render();
+  lastFrame = moving ? now : 0;
+  if (moving || (relayout && !turn && !drag)) draw();
+}
+function bind(unit, page, at, fit) {   // at, fit: where to tell the shader the page lies in its texture and on the leaf
+  gl.activeTexture(gl.TEXTURE0 + unit);
+  const p = page ? texture(page) : null;
+  gl.bindTexture(gl.TEXTURE_2D, p ? p.t : G.blank);
+  gl.uniform4f(at, ...(p ? p.at : WHOLE)); gl.uniform4f(fit, ...(page ? FIT[page - 1] : WHOLE));
+  return !page ? 0 : p ? 1 : 2;   // plain paper only for the moment before the thumbnail sheet arrives
+}
+function sheetUniforms(u, g, m) {
+  gl.uniform2f(u.uSize, W, H); gl.uniform1f(u.uOpen, open); gl.uniform1f(u.uLeftW, leftW);
+  gl.uniform2f(u.uA, ...g.A); gl.uniform2f(u.uDir, ...g.dir); gl.uniform1f(u.uR, g.r); gl.uniform1f(u.uAlpha, g.a);
+  gl.uniform2f(u.uS, ...g.S); gl.uniform2f(u.uV, ...g.V); gl.uniform1f(u.uMirror, m);
+  gl.uniform2f(u.uCam, ...camera()); gl.uniform1f(u.uZc, Zc);
+  // Match the flat shader after the framebuffer rounds fractional device pixels.
+  gl.uniform4f(u.uView, x0(), y0(), canvas.width / dpr, canvas.height / dpr);
+  gl.uniform3f(u.uShadowLight, ...SHADOW_LIGHT);
+}
+function render() {
+  const tr = turn, g = tr && Math.hypot(tr.C[0] - tr.P[0], tr.C[1] - tr.P[1]) > 2 ? shape(tr) : null;
+  // A closed book sits centred and an open one does not, and its crease shows only when open. Both
+  // follow a turn once it is properly under way, so a corner lifted under the mouse never moves them.
+  const k = tr ? smooth(0.1, 0.9, progressOf(tr.C, tr.P)) : 0;
+  shift = tr ? lerp(shiftOf(tr.from), shiftOf(tr.to), k) : shiftOf(pos);
+  open = tr ? lerp(openAt(tr.from), openAt(tr.to), k) : openAt(pos);
+  // One page at a time, the page to the left shows as a sliver (a phone's screen edge would cut it
+  // there anyway), except the closed back cover, which is the page in view.
+  const backCover = !spread && (tr ? isBack(tr.from) || isBack(tr.to) : isBack(pos));
+  leftW = spread || backCover ? 1e5 : sliver();
+  // What lies flat: at rest, the open pages; while a page turns, what it reveals and what it lands on.
+  const flat = !tr ? rest(pos) : g ? (tr.m > 0 ? { left: tr.opposite, right: tr.under } : { left: tr.under, right: tr.opposite })
+    : (tr.m > 0 ? { left: tr.opposite, right: tr.front } : { left: tr.front, right: tr.opposite });
+  $('hint').classList.toggle('show', ready && hintShown());
+  const S = G.shadow;
+  if (g) {
+    // 1. The lifted page's shadow, straight down the light, small; then blurred both ways.
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, G.blank);   // never read a target while drawing into it
+    gl.bindFramebuffer(gl.FRAMEBUFFER, S.f[0]); gl.viewport(0, 0, S.w, S.h);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(G.sheet.p); sheetUniforms(G.sheet.u, g, tr.m); gl.uniform1i(G.sheet.u.uMode, 1);
+    gl.enable(gl.BLEND); gl.blendEquation(gl.MAX);
+    gl.bindVertexArray(G.mesh); gl.drawElements(gl.TRIANGLES, G.count, gl.UNSIGNED_SHORT, 0);
+    gl.disable(gl.BLEND); gl.blendEquation(gl.FUNC_ADD);
+    gl.useProgram(G.blur.p); gl.bindVertexArray(G.empty);
+    gl.uniform2f(G.blur.u.uSmall, S.w, S.h); gl.uniform1i(G.blur.u.tSrc, 0); gl.activeTexture(gl.TEXTURE0);
+    const sigma = 0.05 * W * dpr / 6 / 3;   // a soft edge about a twentieth of a page wide
+    for (const [from, to, st] of [[0, 1, [sigma / S.w, 0]], [1, 0, [0, sigma / S.h]]]) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, S.f[to]); gl.bindTexture(gl.TEXTURE_2D, S.t[from]);
+      gl.uniform2f(G.blur.u.uStep, ...st); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+  }
+  // 2. The table, the page block and the pages lying flat.
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0, 0, 0, 0); gl.clearDepth(1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  const u = G.bg.u; gl.useProgram(G.bg.p); gl.bindVertexArray(G.empty);
+  gl.uniform2f(u.uRes, canvas.width, canvas.height); gl.uniform3f(u.uView, x0(), y0(), 1 / dpr);
+  gl.uniform2f(u.uSize, W, H); gl.uniform1f(u.uOpen, open); gl.uniform1f(u.uLeftW, leftW);
+  gl.uniform2f(u.uStack, ...(tr ? stack(tr.from, tr.to) : stack(pos)));
+  gl.uniform1i(u.tL, 0); gl.uniform1i(u.tR, 1); gl.uniform1i(u.tShadow, 2);
+  gl.uniform2f(u.uHas, bind(0, flat.left, u.uAtL, u.uFitL), bind(1, flat.right, u.uAtR, u.uFitR));
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, g ? S.t[0] : G.blank);
+  gl.uniform1f(u.uTurn, g ? 1 : 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  // 3. The turning page, in 3D, both sides.
+  if (g) {
+    const v = G.sheet.u; gl.useProgram(G.sheet.p); sheetUniforms(v, g, tr.m); gl.uniform1i(v.uMode, 0);
+    gl.uniform2f(v.uRes, canvas.width, canvas.height);
+    gl.uniform1i(v.tF, 0); gl.uniform1i(v.tB, 1); gl.uniform1i(v.tShadow, 2);
+    gl.uniform2f(v.uHasFB, bind(0, tr.front, v.uAtF, v.uFitF), bind(1, tr.back, v.uAtB, v.uFitB));
+    // Drawn flat part first, then the curve, then the part beyond it, so a page folded over itself
+    // blends its soft edge onto the page beneath.
+    gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.bindVertexArray(G.mesh); gl.drawElements(gl.TRIANGLES, G.count, gl.UNSIGNED_SHORT, 0);
+    gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+  }
+}
+
+// ======================= motion =======================
+// While held (or hovered), the page follows on a critically damped spring: it keeps up with the
+// finger closely but never jumps, never overshoots, and its speed changes smoothly. When let go, or
+// turned by a button, it follows a smooth path to where it lies flat.
+const OMEGA = 0.045;   // spring stiffness (per ms): the page trails a moving finger by about 40 ms
+function advance(tr, now, dt) {
+  if (tr.kind === 'auto') {
+    const k = clamp((now - tr.t0) / tr.ms, 0, 1);
+    tr.P = tr.path(k);
+    if (k < 1) return true;
+    finish(tr); return false;
+  }
+  for (let left = dt; left > 0; left -= 8) {   // small steps keep the spring stable
+    const h = Math.min(8, left);
+    for (const i of [0, 1]) {
+      const a = OMEGA * OMEGA * (tr.T[i] - tr.P[i]) - 2 * OMEGA * tr.V[i];
+      tr.V[i] += a * h; tr.P[i] += tr.V[i] * h;
+    }
+  }
+  const still = Math.hypot(tr.T[0] - tr.P[0], tr.T[1] - tr.P[1]) < 0.2 && Math.hypot(...tr.V) < 0.01;
+  if (still) { tr.P = tr.T.slice(); tr.V = [0, 0]; if (tr.kind === 'peek' && tr.leaving) { turn = null; draw(); } }
+  return !still;
+}
+// Glide from where the page is to `to`, starting at the speed it already has towards it (never with
+// a jolt, and never first lurching the other way) and arriving gently.
+function glideTo(tr, to, goal, sound) {
+  const P0 = tr.P.slice(), D = [to[0] - P0[0], to[1] - P0[1]], dist = Math.hypot(...D) || 1, u = [D[0] / dist, D[1] / dist];
+  const ms = reduceMotion ? 1 : clamp(190 + 420 * dist / (2 * W), 190, 610);
+  const v0 = clamp(tr.V[0] * u[0] + tr.V[1] * u[1], 0, 2.5 * dist / ms) * ms;   // initial push, along the way only
+  Object.assign(tr, { kind: 'auto', t0: performance.now(), ms, goal });
+  tr.path = (s) => { const h = s * s * s - 2 * s * s + s, e = -2 * s * s * s + 3 * s * s; return [P0[0] + u[0] * (h * v0 + e * dist), P0[1] + u[1] * (h * v0 + e * dist)]; };
+  if (sound) tr.sound = audio.turn(ms * 0.95);
+  prefetch(); draw();
+}
+let landed = -1e9;   // when the last turn ended
+function finish(tr) { turn = null; pos = tr.goal; landed = performance.now(); if (pos !== first()) opened = true; ui(); prefetch(); draw(); }
+function stopTurn() { audio.hush(); turn = null; drag = null; }
+// A page still turning by itself is finished at once when the reader acts again: the reader is
+// always in control, and a quick run of taps flips quickly, one page each, with nothing left over.
+function hurry() {
+  if (!turn || turn.kind !== 'auto') return false;
+  const goal = turn.goal; stopTurn(); pos = goal; ui(); prefetch();
+  return true;
+}
+
+// A turn by button, key, tap or jump: held near the lower edge and swept over in a gentle arc. In a
+// quick run (the page before was still turning, or has only just landed) it is shorter and moves from
+// the first frame, so a steady run of taps keeps a steady pace.
+const TURN_MS = 760, QUICK_MS = 420, RUN_MS = 300;
+let endFeedbackTimer;
+function clearEndFeedback() {
+  clearTimeout(endFeedbackTimer); $('endFeedback').textContent = $('endStatus').textContent = '';
+  $('count').removeAttribute('data-end');
+}
+function showEndFeedback() {
+  // Even counts close onto a back cover. The plain swipe fallback has no turning leaf.
+  if (!G || BACK_COVER || pos !== last()) return;
+  closeJump();
+  const label = N === 1 ? 'Only one page' : 'Last page';
+  $('endFeedback').textContent = N === 1 ? '1 page' : label;
+  $('endStatus').textContent = label;
+  $('count').setAttribute('data-end', N === 1 ? 'single' : 'last');
+  clearTimeout(endFeedbackTimer); endFeedbackTimer = setTimeout(clearEndFeedback, 2200);
+}
+addEventListener('resize', clearEndFeedback);
+addEventListener('pagehide', clearEndFeedback);
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearEndFeedback(); });
+function turnTo(to, hurried = false) {
+  const quick = hurry() || hurried || performance.now() - landed < RUN_MS;
+  if (turn && turn.kind === 'drag') return;
+  if (to > last()) showEndFeedback();
+  to = clamp(to, first(), last());
+  if (to === pos) { if (turn && turn.kind === 'peek') { turn.leaving = true; turn.T = turn.C; draw(); } return; }
+  clearEndFeedback();
+  if (turn && turn.kind === 'peek' && turn.to === to) { glideTo(turn, flip(turn.C), to, true); return; }   // a lifted corner carries on over
+  const C = [W, 0.74 * H], at = (e) => [W - 2 * W * e, 0.74 * H - 0.12 * H * Math.sin(PI * e)];
+  const ease = quick ? (k) => 1 - Math.pow(1 - k, 3) : (k) => (k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+  const ms = reduceMotion ? 1 : quick ? QUICK_MS : TURN_MS;
+  const rev = reversed(to);
+  turn = Object.assign(rev ? backTurn(to, 'auto', C) : makeTurn(pos, to, 'auto', C), { t0: performance.now(), ms, goal: to, path: (k) => at(rev ? 1 - ease(k) : ease(k)) });
+  turn.sound = audio.turn(ms * 0.93);
+  prefetch(); draw();
+}
+// From where a page still turning is going, so a quick run of presses turns one page each.
+const turnBy = (step, hurried) => turnTo((turn && turn.kind === 'auto' ? turn.goal : pos) + step, hurried);
+
+// ======================= sound: a recorded page turn, landing with the page =======================
+// A soft, husky recorded take (CC0, OpenGameArt), its pitch varied a little each time so a run of
+// turns does not repeat itself.
+const audio = {
+  takes: [{ url: 'viewer/flip.mp3', land: 0.49, gain: 0.95 }],
+  ctx: null, n: 0, current: null, resumed: null,
+  // Browsers allow sound only after the reader touches or presses something.
+  unlock() {
+    if (reduceMotion) return;
+    try {
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+        if (navigator.audioSession) navigator.audioSession.type = 'ambient';   // the phone's silent switch silences it, where supported
+        this.ctx = new AC();
+      }
+      const x = this.ctx;
+      // Resume inside the gesture, even when fetching and decoding are still in progress.
+      this.resumed = (x.state === 'running' ? Promise.resolve() : x.resume()).catch(() => {});
+      for (const t of this.takes) if (!t.ready) {
+        t.ready = fetch(t.url).then((r) => { if (!r.ok) throw new Error('Sound unavailable'); return r.arrayBuffer(); })
+          .then((b) => x.decodeAudioData(b)).then((d) => { t.buf = d; })
+          .catch(() => { t.ready = null; });   // a later gesture may retry; navigation never waits
+      }
+    } catch {}   // unavailable audio must not prevent the page from turning
+  },
+  // A turn whose page lands `inMs` from now. Returns what `hush` needs to stop it.
+  turn(inMs) {
+    const x = this.ctx; if (!x || reduceMotion || document.hidden) return null;
+    this.hush();
+    const t = this.takes[this.n++ % this.takes.length], end = performance.now() + inMs;
+    const h = { cancelled: false, s: null, g: null }; this.current = h;
+    Promise.all([t.ready, this.resumed]).then(() => {
+      const left = end - performance.now();
+      if (h.cancelled || left <= 0 || document.hidden || reduceMotion || x.state !== 'running' || !t.buf) { this.hush(h); return; }
+      const s = h.s = x.createBufferSource(), g = h.g = x.createGain();
+      s.buffer = t.buf; s.playbackRate.value = 0.95 + Math.random() * 0.1; g.gain.value = t.gain;
+      s.connect(g).connect(x.destination);
+      s.onended = () => { s.disconnect(); g.disconnect(); if (this.current === h) this.current = null; };
+      const wait = left / 1000 - t.land / s.playbackRate.value;
+      if (wait >= 0) s.start(x.currentTime + wait); else s.start(x.currentTime, Math.min(-wait * s.playbackRate.value, t.land));
+    }).catch(() => { this.hush(h); h.s?.disconnect(); h.g?.disconnect(); });
+    return h;
+  },
+  hush(h = this.current, fade = true) {
+    if (!h) return;
+    h.cancelled = true;
+    if (this.current === h) this.current = null;
+    try { if (h.s) { const t = this.ctx.currentTime; h.g.gain.setTargetAtTime(0, t, 0.015); h.s.stop(t + (fade ? 0.08 : 0)); } } catch {}
+  },
+};
+document.addEventListener('visibilitychange', () => { if (document.hidden) audio.hush(audio.current, false); });
+addEventListener('pagehide', () => audio.hush(audio.current, false));
+
+// ======================= pointer: hold the page anywhere, move any way =======================
+let drag = null;
+const BACK = 0.35;   // one page at a time, its left part (this share of it) turns back
+const toBook = (e) => { const b = canvas.getBoundingClientRect(); return [e.clientX - b.left + x0(), e.clientY - b.top + y0()]; };
+function onBook([x, y]) {
+  const { left, right } = rest(pos);
+  return y >= 0 && y <= H && x >= (left && (spread || isBack(pos)) ? -W : 0) && x <= (right ? W : 0);
+}
+const backward = (Q) => (spread ? Q[0] < 0 : isBack(pos) || Q[0] < BACK * W);
+const fingers = new Map();
+
+canvas.addEventListener('pointerdown', (e) => {
+  audio.unlock();
+  fingers.set(e.pointerId, e);
+  if (fingers.size === 2) { openZoom(null, [...fingers.values()]); return; }   // two fingers: zoom
+  const hurried = hurry();                                       // a page still turning by itself is done
+  const Q = toBook(e);
+  if (!onBook(Q)) return;
+  canvas.setPointerCapture(e.pointerId);
+  drag = { Q0: Q, x: e.clientX, y: e.clientY, started: false, hist: [], hurried };
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (fingers.has(e.pointerId)) fingers.set(e.pointerId, e);
+  if (!drag) { if (e.pointerType === 'mouse') hover(toBook(e)); return; }
+  drag.hist.push([e.timeStamp, e.clientX]); if (drag.hist.length > 6) drag.hist.shift();
+  if (!drag.started) {
+    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+    const back = backward(drag.Q0), to = pos + (back ? -1 : 1);
+    if (to < first() || to > last()) {
+      // A forward swipe, not a vertical movement or an attempt to go backwards.
+      if (to > last() && e.clientX < drag.x && Math.abs(e.clientX - drag.x) > Math.abs(e.clientY - drag.y)) showEndFeedback();
+      drag = null; if (relayout) draw(); return;
+    }
+    clearEndFeedback();
+    // Wherever the page is held, its outer edge at that height moves with the finger: nothing jumps
+    // on touch, the fold starts at the edge, and moving up or down tilts it to any angle. Sideways
+    // the edge moves further than the finger, so one swipe across the page turns it. (Worked out as a
+    // turn forward: a turn back is mirrored, or, one page at a time, a turn forward in reverse.)
+    const rev = reversed(to), m = back && !rev ? -1 : 1, held = turn && turn.kind === 'peek' && turn.to === to ? turn : null;
+    const C = [W, clamp(drag.Q0[1], 0, H)];
+    const gain = rev ? 2.35 : clamp(W / Math.max(m * drag.Q0[0], 1), 1, 2.5);
+    turn = held || (rev ? backTurn(to, 'drag', C) : makeTurn(pos, to, 'drag', C));
+    Object.assign(turn, { kind: 'drag', leaving: false });
+    Object.assign(drag, { started: true, m, gain, start: held ? held.T : turn.P.slice(), x: e.clientX, y: e.clientY });
+    prefetch();
+  }
+  const dx = (e.clientX - drag.x) * drag.m * drag.gain, dy = e.clientY - drag.y;
+  turn.T = attach(turn.C, [drag.start[0] + dx, clamp(drag.start[1] + dy, -0.25 * H, 1.25 * H)]);
+  draw();
+});
+function endPointer(e) {
+  fingers.delete(e.pointerId);
+  if (e.type === 'pointercancel') clearEndFeedback();
+  if (e.type === 'pointerup') audio.unlock();   // on phones a lifted finger, not a touch down, allows sound
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (relayout) draw();
+  if (!d.started) { if (e.type === 'pointerup') tap(d.Q0, d.hurried); return; }
+  const [ta, xa] = d.hist[0], v = d.m * (e.clientX - xa) / Math.max(1, e.timeStamp - ta);   // px per ms; negative turns over
+  const t = progressOf(turn.C, turn.T);   // a quarter of the way, or a flick
+  const complete = e.type === 'pointerup' && (turn.rev ? t < 0.75 || v > 0.3 : t > 0.25 || v < -0.3);
+  release(complete);
+}
+canvas.addEventListener('pointerup', endPointer); canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('lostpointercapture', e => { if (fingers.delete(e.pointerId)) { clearEndFeedback(); cancelDrag(); } });
+// Finish the turn (the moved point goes to its mirror image, so the page lies flat on the other side),
+// or let the page settle back where it was.
+function release(complete) {
+  const t = turn, over = complete !== !!t.rev;   // whether the page ends turned over
+  glideTo(t, over ? flip(t.C) : t.C, over ? t.to : t.from, complete);
+}
+function cancelDrag() { const d = drag; drag = null; if (d && d.started) release(false); if (relayout) draw(); }
+
+// On a computer, a page corner lifts a little under the mouse, inviting a drag: either outer corner.
+function hover(Q) {
+  if (turn && turn.kind !== 'peek') return;
+  const back = backward(Q), to = pos + (back ? -1 : 1), edge = back ? -W : W;
+  const zone = 0.16 * W, near = 1 - Math.abs(Q[0] - edge) / zone, low = Q[1] > H / 2;
+  const ok = near > 0 && (low ? Q[1] > H - zone : Q[1] < zone) && to >= first() && to <= last() && onBook(Q);
+  if (ok) {
+    const C = [W - 1, low ? H - 1 : 1], lift = (0.03 + 0.05 * near) * W;
+    if (!turn || turn.to !== to || turn.C[1] !== C[1]) turn = makeTurn(pos, to, 'peek', C);
+    turn.leaving = false; turn.T = attach(C, [C[0] - lift, C[1] + (low ? -1 : 1) * lift * 0.7]); draw();
+  } else if (turn) { turn.leaving = true; turn.T = turn.C; draw(); }
+}
+canvas.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !drag) hover([NaN, NaN]); });
+
+// A tap on the right page turns forward, on the left page back, as in a reader app.
+function tap(Q, hurried) { turnTo(pos + (backward(Q) ? -1 : 1), hurried); }
+
+// ======================= controls =======================
+// The page number keeps one width for the whole book, so the buttons beside it never move.
+// Sized in digits rather than measured, so it holds whichever font has loaded (the digits are all one width).
+function sizeCount() {
+  const widest = (embedded ? (canvas.clientWidth > canvas.clientHeight && N > 2 ? `${N - 1}–${N}/${N}` : `${N}/${N}`) : (N > 2 ? `${N - 1}–${N} / ${N}` : `${N} / ${N}`)).length;
+  $('count').style.minWidth = $('jump').style.minWidth = `calc(${widest} * (1ch + .04em) + 20px)`;
+  $('jumpOf').textContent = `/ ${N}`;
+}
+function ui() {
+  const v = visible();
+  $('pageCount').textContent = (v.length === 2 ? `${v[0]}–${v[1]}` : v[0]) + (embedded ? `/${N}` : ` / ${N}`);
+  // At the end, the next button becomes "back to the cover": where the reader's thumb already is.
+  const end = pos >= last(), next = $('next');
+  $('prev').disabled = pos <= first(); next.disabled = N === 1;
+  $('nextIcon').setAttribute('d', end ? 'M4 12a8 8 0 1 0 2.3-5.6M4 4v3.5h3.5' : 'M9 6l6 6-6 6');
+  next.setAttribute('aria-label', end ? 'Back to the cover' : 'Next page'); next.title = end ? 'Back to the cover' : '';
+}
+$('prev').onclick = () => { audio.unlock(); turnBy(-1); };
+$('next').onclick = () => { audio.unlock(); pos >= last() ? turnTo(first()) : turnBy(1); };
+$('zoomBtn').onclick = () => openZoom();
+// Tap the page number to type one and go straight there.
+const jump = $('jump'), jumpTo = $('jumpTo');
+$('count').onclick = () => { clearEndFeedback(); $('count').hidden = true; jump.hidden = false; jumpTo.value = here(); jumpTo.focus(); jumpTo.select(); };
+const closeJump = () => { jump.hidden = true; $('count').hidden = false; };
+const goToEnteredPage = () => {
+  audio.unlock();
+  const n = parseInt(jumpTo.value, 10);
+  closeJump();
+  if (n >= 1 && n <= N) turnTo(spread ? Math.floor(n / 2) : n);
+};
+jump.onsubmit = (e) => { e.preventDefault(); goToEnteredPage(); };
+jumpTo.onblur = () => setTimeout(closeJump, 0);
+jumpTo.onkeydown = (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); goToEnteredPage(); }
+  if (e.key === 'Escape') { e.preventDefault(); closeJump(); $('count').focus(); }
+};
+addEventListener('keydown', (e) => {
+  if (!$('zoom').hidden) { if (e.key === 'Escape') closeZoom(); return; }
+  if (e.altKey || e.ctrlKey || e.metaKey || e.target === jumpTo) return;   // browser shortcuts, and typing a page number
+  if (e.target.closest && e.target.closest('button') && (e.key === ' ' || e.key === 'Enter')) return;   // a focused button handles itself
+  const key = { ArrowRight: 1, PageDown: 1, ' ': 1, ArrowLeft: -1, PageUp: -1 }[e.key];
+  if (key) { e.preventDefault(); audio.unlock(); turnBy(key); }
+  if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); audio.unlock(); turnTo(e.key === 'Home' ? first() : last()); }
+});
+canvas.addEventListener('wheel', (e) => { if (e.ctrlKey) { e.preventDefault(); openZoom({ x: e.clientX, y: e.clientY }); } }, { passive: false });
+
+// ======================= zoom: the pages in view at full resolution =======================
+// CSS dimensions describe the fitted view, not the full-resolution image's thousands of pixels.
+// Keep the entry pages while rotating, so the page under the reader's finger cannot disappear.
+const Z = { el: $('zoom'), content: $('zc'), active: false, session: 0, s: 1, x: 0, y: 0,
+  w: 0, h: 0, ratio: 1, area: null, pts: new Map(), last: null, tapAt: 0, tapPoint: null };
+function clearZoomPointers() {
+  for (const id of Z.pts.keys()) if (Z.el.hasPointerCapture(id)) Z.el.releasePointerCapture(id);
+  Z.pts.clear(); Z.last = null; Z.tapAt = 0;
+}
+function clearBookPointers() {
+  drag = null;
+  for (const id of fingers.keys()) if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
+  fingers.clear();
+}
+function zoomArea() {
+  const box = Z.el.getBoundingClientRect(), safe = getComputedStyle($('safe'));
+  const [st, sr, sb, sl] = ['Top', 'Right', 'Bottom', 'Left'].map(k => parseFloat(safe['padding' + k]) || 0);
+  // Both candidates use intrinsic control sizes, independent of the currently selected placement.
+  const close = Z.el.querySelector('.close'), bar = Z.el.querySelector('.bar');
+  const top = st + 12 + close.offsetHeight + 8, bottom = box.height - sb - 10 - bar.offsetHeight - 8;
+  const below = { x: sl + 12, y: top, w: Math.max(1, box.width - sl - sr - 24), h: Math.max(1, bottom - top) };
+  const gutter = 12 + Math.max(close.offsetWidth, bar.offsetWidth) + 8;
+  const beside = { x: sl + gutter, y: st + 8, w: Math.max(1, box.width - sl - sr - 2 * gutter), h: Math.max(1, box.height - st - sb - 16) };
+  const fit = a => Math.min(a.h, a.w / Z.ratio);
+  const side = bottom > top && fit(beside) > fit(below);
+  Z.el.classList.toggle('side', side);
+  return side ? beside : below;
+}
+function zoomSync() {
+  // A drag or rotation can interrupt a button's CSS transition. Start from what is on screen.
+  const m = new DOMMatrixReadOnly(getComputedStyle(Z.content).transform);
+  Z.s = m.a; Z.x = m.e; Z.y = m.f;
+}
+function zoomLayout(reset = false) {
+  if (!Z.active || !Z.el.clientWidth || !Z.el.clientHeight) return;
+  const area = zoomArea(); reset = reset || !Z.area;
+  if (!reset && Z.area && Object.keys(area).every(k => area[k] === Z.area[k])) return;
+  if (!reset) zoomSync();
+  const u = reset ? .5 : (Z.area.x + Z.area.w / 2 - Z.x) / (Z.w * Z.s);
+  const v = reset ? .5 : (Z.area.y + Z.area.h / 2 - Z.y) / (Z.h * Z.s);
+  clearZoomPointers(); Z.area = area;
+  Z.h = Math.min(area.h, area.w / Z.ratio); Z.w = Z.h * Z.ratio;
+  if (reset) Z.s = 1;
+  Object.assign(Z.content.style, { width: Z.w + 'px', height: Z.h + 'px' });
+  Z.x = area.x + area.w / 2 - u * Z.w * Z.s;
+  Z.y = area.y + area.h / 2 - v * Z.h * Z.s; zoomApply();
+}
+function openZoom(at, points = []) {
+  if (Z.active) return;
+  clearEndFeedback();
+  cancelDrag(); hurry(); clearBookPointers(); clearZoomPointers();
+  const session = ++Z.session, v = visible(); Z.ratio = v.reduce((n, i) => n + ratioOf(i), 0);
+  Z.content.replaceChildren(...v.map((i) => {
+    const img = new Image();
+    img.src = file('small', i); img.alt = `Page ${i} of ${N}`; img.draggable = false;
+    img.style.width = `${100 * ratioOf(i) / Z.ratio}%`;
+    const hi = new Image(); hi.src = file('sharp', i);
+    hi.decode().then(() => {
+      if (Z.active && Z.session === session && img.isConnected) {
+        hi.alt = img.alt; hi.draggable = false; hi.style.cssText = img.style.cssText; img.replaceWith(hi);
+      }
+    }).catch(() => { /* Keep the readable small page if full detail fails. */ });
+    return img;
+  }));
+  clearTimeout(Z.closing); $('stage').inert = $('controls').inert = $('fullscreenControl').inert = true;
+  Z.active = true; Z.el.hidden = false; zoomLayout(true);
+  requestAnimationFrame(() => { if (Z.active && Z.session === session) Z.el.classList.add('open'); });
+  if (at) { const box = Z.el.getBoundingClientRect(); zoomAt(2.5, at.x - box.left, at.y - box.top); }
+  for (const p of points) { Z.el.setPointerCapture(p.pointerId); Z.pts.set(p.pointerId, zoomPoint(p)); }
+  Z.last = zoomGesture(); $('zClose').focus();
+}
+function closeZoom() {
+  if (!Z.active) return;
+  Z.active = false; const session = ++Z.session; clearZoomPointers();
+  Z.el.classList.remove('open'); Z.closing = setTimeout(() => { if (Z.session === session) { Z.el.hidden = true; Z.content.replaceChildren(); } }, 200);
+  $('stage').inert = $('controls').inert = $('fullscreenControl').inert = false; $('zoomBtn').focus();
+}
+function zoomApply(animate) {
+  const a = Z.area, w = Z.w * Z.s, h = Z.h * Z.s;
+  Z.x = w <= a.w ? a.x + (a.w - w) / 2 : clamp(Z.x, a.x + a.w - w, a.x);
+  Z.y = h <= a.h ? a.y + (a.h - h) / 2 : clamp(Z.y, a.y + a.h - h, a.y);
+  Z.content.style.transition = animate && !reduceMotion ? 'transform .25s ease-out' : 'none';
+  Z.content.style.transform = `translate(${Z.x}px, ${Z.y}px) scale(${Z.s})`;
+}
+function zoomAt(s, px, py, animate = true) {
+  s = clamp(s, 1, 6);
+  Z.x = px - (px - Z.x) * (s / Z.s); Z.y = py - (py - Z.y) * (s / Z.s); Z.s = s; zoomApply(animate);
+}
+const zoomPoint = e => { const b = Z.el.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; };
+function zoomGesture() {
+  const p = [...Z.pts.values()]; if (!p.length) return null;
+  return { mx: p.reduce((a, q) => a + q.x, 0) / p.length, my: p.reduce((a, q) => a + q.y, 0) / p.length,
+    d: p.length > 1 ? Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) : 0, n: p.length };
+}
+$('zClose').onclick = closeZoom;
+$('zIn').onclick = () => zoomAt(Z.s * 1.6, Z.area.x + Z.area.w / 2, Z.area.y + Z.area.h / 2);
+$('zOut').onclick = () => zoomAt(Z.s / 1.6, Z.area.x + Z.area.w / 2, Z.area.y + Z.area.h / 2);
+Z.el.addEventListener('wheel', (e) => { if (!Z.active) return; e.preventDefault(); zoomSync(); const p = zoomPoint(e); zoomAt(Z.s * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0025)), p.x, p.y, false); }, { passive: false });
+Z.el.addEventListener('pointerdown', (e) => {
+  if (!Z.active || e.target.closest('button')) return;
+  zoomSync(); zoomApply(); const p = zoomPoint(e);
+  Z.el.setPointerCapture(e.pointerId); Z.pts.set(e.pointerId, p); Z.last = zoomGesture();
+  if (Z.pts.size === 1 && e.timeStamp - Z.tapAt < 300) zoomAt(Z.s > 1.2 ? 1 : 2.5, p.x, p.y);
+  Z.tapAt = Z.pts.size === 1 ? e.timeStamp : 0; Z.tapPoint = p;
+});
+Z.el.addEventListener('pointermove', (e) => {
+  if (!Z.active || !Z.pts.has(e.pointerId)) return;
+  if (Z.content.style.transition !== 'none') zoomSync();
+  const point = zoomPoint(e);
+  if (Z.tapPoint && Math.hypot(point.x - Z.tapPoint.x, point.y - Z.tapPoint.y) > 8) Z.tapAt = 0;
+  Z.pts.set(e.pointerId, point); const p = zoomGesture();
+  if (Z.last && Z.last.n === p.n) {
+    Z.x += p.mx - Z.last.mx; Z.y += p.my - Z.last.my;
+    if (p.d && Z.last.d) zoomAt(Z.s * p.d / Z.last.d, p.mx, p.my, false); else zoomApply();
+  }
+  Z.last = p;
+});
+const zoomUp = (e) => {
+  if (!Z.pts.delete(e.pointerId)) return;
+  if (e.type !== 'pointerup') Z.tapAt = 0;
+  Z.last = zoomGesture();
+};
+Z.el.addEventListener('pointerup', zoomUp); Z.el.addEventListener('pointercancel', zoomUp); Z.el.addEventListener('lostpointercapture', zoomUp);
+new ResizeObserver(() => zoomLayout()).observe(Z.el);
+
+// ======================= start =======================
+function plain() {   // without WebGL2: the pages side by side, swiped
+  clearEndFeedback();
+  stopTurn(); G = null; atlasController.abort(); smallJob?.abort();
+  sharpJobs.forEach((job) => job.controller.abort());
+  const box = document.createElement('div'); box.className = 'plain';
+  for (let i = 1; i <= N; i++) { const img = new Image(); img.src = file('small', i); img.alt = `Page ${i} of ${N}`; img.loading = i > 2 ? 'lazy' : 'eager'; box.append(img); }
+  canvas.replaceWith(box); $('controls').hidden = true; document.body.classList.add('ready'); loadText();
+}
+if (!gl) plain();
+else {
+  initGL();
+  // Runs after layout and before paint, so a resized stage is never shown stretched.
+  new ResizeObserver(() => { if (G && !gl.isContextLost()) { relayout = false; layout(); render(); } else { relayout = true; draw(); } }).observe($('stage'));
+  // Label/font reflow must not finish a held page or a just-started page jump. Measure it at rest.
+  const labels = new ResizeObserver(() => { relayout = true; draw(); });
+  for (const id of ['title', 'controls', 'count', 'jump']) labels.observe($(id));
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); clearEndFeedback(); stopTurn(); G = null; atlasController.abort(); smallJob?.abort(); sharpJobs.forEach((job) => job.controller.abort()); });
+  canvas.addEventListener('webglcontextrestored', () => { initGL(); relayout = true; draw(); prefetch(); });
+  draw();
+}
+</script>
+</body>
+</html>

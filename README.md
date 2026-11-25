@@ -4,10 +4,10 @@ jit.works is the public portfolio and studio website for [Jithu Sunny](https://g
 
 ## Status
 
-The portfolio is live at [jit.works](https://jit.works): an Astro + Preact site showing six selected
-projects with direct WhatsApp and email contact. Project galleries render approved public media when
-available and keep an intentional placeholder while an evidence pack is pending. Stack rationale:
-[docs/adr/0001-stack-astro-cloudflare.md](docs/adr/0001-stack-astro-cloudflare.md).
+The portfolio uses prerendered Astro sections on Cloudflare, with small browser modules for
+image galleries, product tabs and interactive work samples. The approved design includes project
+screens, a menu reader, client communication scenes and direct WhatsApp/email contact.
+[Architecture](docs/adr/0001-stack-astro-cloudflare.md) · [Portfolio maintenance](docs/portfolio.md).
 
 ## Working here
 
@@ -29,7 +29,8 @@ Current checks:
 ```sh
 npm run build       # prerenders the site
 npx astro check     # type-check
-npm test            # work-system tests
+npm test            # work-system and contact tests
+npm run test:browser # build + Chromium acceptance against the local Cloudflare Worker
 ```
 
 The repository does not yet grant a software license. Do not assume rights beyond those provided by GitHub's terms until a license is selected.
