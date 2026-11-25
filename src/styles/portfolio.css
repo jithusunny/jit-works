@@ -1,3 +1,9 @@
+@font-face {
+  font-family: "Swishbook Inter";
+  src: url("/assets/portfolio/inter.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
 /* Foundation */
 @font-face {
   font-family: Figtree;
@@ -4474,7 +4480,7 @@ dialog[data-device="tablet"] #dialog-content {
   display: block;
   visibility: visible;
 }
-#ribbonpage {
+#swishbook {
   background: #1b3428 !important;
 }
 @media (min-width: 951px) and (max-width: 1599px) {
@@ -6896,6 +6902,11 @@ dialog[data-device="phone"] #dialog-content {
   font-family: Georgia, "Times New Roman", serif;
   font-weight: 400;
   letter-spacing: -0.045em;
+}
+.project-info h3.identity-swishbook {
+  font-family: "Swishbook Inter", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 .project-info h3.identity-lifesuite {
   font-family: Figtree, system-ui, sans-serif;
