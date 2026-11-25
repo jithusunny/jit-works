@@ -163,3 +163,34 @@ test('offscreen samples do not compete with the first screen', async ({ page }) 
   await expect(page.frameLocator('.tonico-book').locator('#pageCount')).toHaveText('1/16');
   expect(demoRequests.some(url => url.includes('/menu/'))).toBe(true);
 });
+
+test('WhatsApp scenes show the client receiving messages from Jithu', async ({ page }) => {
+  for (const [width, height] of sizes) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/');
+    const chats = page.locator('.chat-phone');
+    await expect(chats).toHaveCount(3);
+    for (const chat of await chats.all()) {
+      await expect(chat.locator('.chat-header b')).toHaveText('Jithu Sunny');
+      await expect(chat.locator('.chat-avatar')).toHaveAttribute('src', /jithu-avatar.jpg$/);
+      await expect(chat.locator('.chat-sent')).toHaveCount(1);
+      await expect(chat.locator('.chat-sent .read-ticks')).toHaveCount(1);
+      await expect(chat.locator('.chat-received .read-ticks')).toHaveCount(0);
+      await expect(chat.locator('.chat-image')).toHaveClass(/chat-received/);
+      for (const message of await chat.locator('.chat-received').all()) {
+        await expect(message).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+      }
+      await expect(chat.locator('.chat-sent')).toHaveCSS('background-color', 'rgb(217, 253, 211)');
+      const incoming = await chat.locator('.chat-received.chat-text').first().boundingBox();
+      const outgoing = await chat.locator('.chat-sent').boundingBox();
+      expect(incoming!.x).toBeLessThan(outgoing!.x);
+    }
+    for (const button of await page.locator('.enlarge-button').all()) {
+      await expect(button).toHaveText(/^\s*View full-size (design|options|guide|update)\s*$/);
+      await button.click();
+      await expect(page.locator('#dialog-content img')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(button).toBeFocused();
+    }
+  }
+});

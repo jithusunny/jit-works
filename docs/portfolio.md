@@ -21,7 +21,9 @@ The menu reader and project plan are isolated documents under `public/demos/`. T
 client choices or collect information. The review animation supports direct local interaction,
 pauses offscreen and respects reduced motion. Its submitted state explicitly confirms that no
 feedback was sent. WhatsApp scenes and service compositions are authored portfolio material,
-not integrations with WhatsApp, campaign accounts or analytics services.
+not integrations with WhatsApp, campaign accounts or analytics services. Chat scenes show the
+client’s view: Jithu in the header, his incoming messages on the left, and the client’s outgoing
+messages and delivery ticks on the right. “View full-size” buttons open the image dialog.
 
 ## Verification
 
