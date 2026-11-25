@@ -4,6 +4,31 @@ The page is composed in `src/pages/index.astro`. Each section lives in
 `src/components/portfolio/`; shared responsive styles are in `src/styles/portfolio.css`.
 Direct contact destinations are defined once in `src/data/site.ts`.
 
+## Accepted design intent
+
+Keep the page clear for business visitors: concrete project names, useful facts and short
+explanations beside the relevant visual. Selected projects form one recognisable group, with
+clear boundaries between projects. Preserve each project's own logo and typography rather than
+making every identity look alike.
+
+Responsive layouts should use the space available on phones, tablets and desktops, including
+landscape and short-height screens. Recompose the content where needed; do not simply shrink a desktop screenshot. Keep
+text readable, controls clearly actionable and images free of distortion. Where device frames
+are used, preserve their realistic proportions. The three smaller project cards use rounded
+images with visit buttons, without device frames.
+
+The hero combines distinct product views: a level laptop, a tilted phone and an oppositely
+tilted menu. Preserve sharp sources, restrained motion and the different imagery in subsequent
+project sections. Mridhu’s desktop collection and phone product page show different useful
+states. Avoid decorative nested boxes and abrupt unrelated background changes.
+
+Working together moves from its introduction through design, decisions, feedback, instructions,
+project tracking and updates. Keep these purposes distinct. Chat scenes use the recipient's
+view; decision options, instructions and completed-work updates should be understandable without
+extra context. Keep current capabilities separate from the Available soon campaign, product-film
+and search/AI visibility services. Feedback comments float above a still-visible design. Media demonstrates the
+work; surrounding copy explains what the visitor can do or expect without repeating the image.
+
 ## Media
 
 Keep small display assets under `public/assets/portfolio/previews/` and their originals under

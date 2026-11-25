@@ -67,7 +67,6 @@
   const body = list.querySelector("#sample-comments-body");
   const status = list.querySelector(".feedback-status");
   const submit = list.querySelector(".feedback-submit");
-  target.setAttribute("aria-label", "Add a comment on the pickup note");
   target.setAttribute("aria-controls", composer.id);
   target.setAttribute("aria-expanded", "false");
   let comments = [],
@@ -100,10 +99,6 @@
       button.type = "button";
       button.className = "feedback-row";
       button.dataset.comment = String(comment.id);
-      button.setAttribute(
-        "aria-label",
-        "Comment " + comment.id + ": " + comment.text,
-      );
       button.setAttribute("aria-pressed", String(selected === comment.id));
       const number = document.createElement("span");
       number.textContent = comment.id;
