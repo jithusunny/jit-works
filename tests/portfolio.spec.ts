@@ -204,3 +204,38 @@ test('WhatsApp scenes show the client receiving messages from Jithu', async ({ p
     }
   }
 });
+
+// A visible label must also name the control for speech and screen-reader users.
+for (const width of [390, 1440]) {
+  test(`${width}px: feedback accessible names follow visible labels`, async ({ browser }) => {
+    for (const javaScriptEnabled of [true, false]) {
+      const context = await browser.newContext({
+        viewport: { width, height: 900 }, javaScriptEnabled, reducedMotion: 'reduce',
+      });
+      const page = await context.newPage();
+      await page.goto('/');
+      await expect(page.locator('main')).toHaveCount(1);
+      const pickup = page.locator('.pickup-target');
+      await expect(pickup).toHaveAccessibleName('Free pickup available');
+      const rows = page.locator(javaScriptEnabled ? '.feedback-row' : '.feedback-list-item');
+      await expect(rows).toHaveCount(javaScriptEnabled ? 2 : 6);
+      for (const row of await rows.all()) {
+        const visibleLabel = (await row.innerText()).replace(/\s+/g, ' ').trim();
+        await expect(row).toHaveAccessibleName(visibleLabel);
+      }
+      if (javaScriptEnabled) {
+        await pickup.click();
+        await page.locator('#feedback-text').fill('Please show the collection address.');
+        await page.locator('#feedback-text').press('Enter');
+        await expect(rows).toHaveCount(3);
+        await expect(rows.last()).toHaveAccessibleName('3 Please show the collection address.');
+        await rows.last().click();
+        await page.locator('.feedback-edit').click();
+        await page.locator('#feedback-text').fill('Please show the shop address.');
+        await page.locator('#feedback-text').press('Enter');
+        await expect(rows.last()).toHaveAccessibleName('3 Please show the shop address.');
+      }
+      await context.close();
+    }
+  });
+}
