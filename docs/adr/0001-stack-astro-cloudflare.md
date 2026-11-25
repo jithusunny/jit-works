@@ -49,3 +49,12 @@ Use **Astro** with the **`@astrojs/cloudflare` adapter** and a single **Preact**
 - `astro check` passes with 0 errors.
 - Headless-Chromium renders at 390×844 and 1440×1000 reproduce the design's hero, carousel, and
   card anatomy.
+
+## 25 November 2026: approved portfolio implementation
+
+The expanded portfolio keeps Astro and the Cloudflare adapter. Semantic Astro sections replace
+the former whole-page Preact island; small bundled browser modules enhance the prerendered page.
+The carousel is no longer part of the accepted design, so its framework integration and geometry
+code are removed. Content and contact links remain readable without JavaScript. Embedded menu
+and project-plan samples are static, local-only documents. No analytics or scheduling service is
+introduced. The client bundle is approximately 6 kB gzip.

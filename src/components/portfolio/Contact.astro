@@ -1,0 +1,21 @@
+---
+import { WHATSAPP_URL, EMAIL_URL } from '../../data/site';
+---
+<section class="contact" id="contact" data-section="contact">
+  <div>
+    <p class="eyebrow">HAVE SOMETHING IN MIND?</p>
+    <h2>Let’s build it.</h2>
+  </div>
+  <div class="contact-actions">
+    <p>Tell me what you’re working on.</p>
+    <a class="button" href={WHATSAPP_URL} target="_blank" rel="noopener"
+      ><img
+        class="contact-avatar"
+        src="/assets/portfolio/previews/jithu-avatar.jpg"
+        alt=""
+        width="40"
+        height="40"
+      />Talk to Jithu <span aria-hidden="true">↗</span></a
+    ><a class="text-link" href={EMAIL_URL}>Or send an email ↗</a>
+  </div>
+</section>

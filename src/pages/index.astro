@@ -1,11 +1,22 @@
 ---
 import Base from '../layouts/Base.astro';
-import Showcase from '../components/Showcase.tsx';
+import Header from '../components/portfolio/Header.astro';
+import Hero from '../components/portfolio/Hero.astro';
+import Projects from '../components/portfolio/Projects.astro';
+import WorkingTogether from '../components/portfolio/WorkingTogether.astro';
+import Capabilities from '../components/portfolio/Capabilities.astro';
+import Upcoming from '../components/portfolio/Upcoming.astro';
+import Contact from '../components/portfolio/Contact.astro';
+import Footer from '../components/portfolio/Footer.astro';
+import MediaDialog from '../components/portfolio/MediaDialog.astro';
+import '../styles/portfolio.css';
 ---
-
-<Base
-  title="Jithu Sunny · Jit works."
-  description="A living collection of software, tools, and experiments by Jithu Sunny. Browse selected work and start a conversation."
->
-  <Showcase client:load />
+<Base title="Jithu Sunny · jit.works" description="Websites, apps and business software. Explore Jithu Sunny’s projects and see how we can work together.">
+<Header />
+<main id="top">
+<Hero /><Projects /><WorkingTogether /><Capabilities /><Upcoming /><Contact />
+</main>
+<Footer />
+<MediaDialog />
 </Base>
+<script>import '../scripts/portfolio.js';</script>
