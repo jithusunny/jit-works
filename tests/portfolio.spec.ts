@@ -186,7 +186,17 @@ test('WhatsApp scenes show the client receiving messages from Jithu', async ({ p
       expect(incoming!.x).toBeLessThan(outgoing!.x);
     }
     for (const button of await page.locator('.enlarge-button').all()) {
-      await expect(button).toHaveText(/^\s*View full-size (design|options|guide|update)\s*$/);
+      await expect(button).toHaveAccessibleName(/^View full-size (design|options|guide|update)$/);
+      await expect(button).toHaveText('');
+      await button.scrollIntoViewIfNeeded();
+      const bounds = await button.boundingBox();
+      const preview = await button.locator('..').boundingBox();
+      expect(bounds!.width).toBeGreaterThanOrEqual(44);
+      expect(bounds!.height).toBeGreaterThanOrEqual(44);
+      expect(bounds!.x).toBeGreaterThanOrEqual(0);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+      expect(bounds!.y).toBeGreaterThanOrEqual(preview!.y + preview!.height);
+      expect(bounds!.y - (preview!.y + preview!.height)).toBeLessThanOrEqual(10);
       await button.click();
       await expect(page.locator('#dialog-content img')).toBeVisible();
       await page.keyboard.press('Escape');
