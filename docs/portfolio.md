@@ -9,7 +9,7 @@ Direct contact destinations are defined once in `src/data/site.ts`.
 Keep small display assets under `public/assets/portfolio/previews/` and their originals under
 `public/assets/portfolio/`. Explicit `data-image` values identify originals when names differ.
 Keep width/height attributes and responsive sources accurate; do not enlarge a small source and
-claim more detail. Font licence notices sit beside the local font files.
+claim more detail. Font licence notices sit beside the local font files. Swishbook’s wordmark and the embedded menu share the local Inter font. Its blue mark and product destination follow [swishbook.app](https://swishbook.app/).
 
 The media dialog uses the largest comfortable viewport area, a nearby caption and one close
 button. Escape or the backdrop closes it and returns focus. Left/right arrows cycle only the
