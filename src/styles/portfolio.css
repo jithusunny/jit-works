@@ -158,10 +158,6 @@ nav a:last-child {
   gap: 24px;
   max-width: 650px;
 }
-.hero-bottom p {
-  font-size: clamp(16px, 1.1vw, 24px);
-  color: var(--muted);
-}
 .round-link {
   width: 58px;
   height: 58px;
@@ -658,9 +654,6 @@ dialog::backdrop {
   .hero .eyebrow {
     font-size: 11px;
   }
-  .hero-bottom p {
-    font-size: 15px;
-  }
   .round-link {
     width: 46px;
     height: 46px;
@@ -854,9 +847,6 @@ dialog::backdrop {
   .hero .eyebrow {
     font-size: 10px;
   }
-  .hero-bottom p {
-    font-size: 13px;
-  }
   .round-link {
     width: 40px;
     height: 40px;
@@ -974,9 +964,6 @@ dialog::backdrop {
   }
   .hero-bottom {
     gap: 13px;
-  }
-  .hero-bottom p {
-    font-size: 14px;
   }
   .project-info h3 {
     font-size: 39px;
@@ -3178,9 +3165,6 @@ dialog[data-device="tablet"] #dialog-content {
   .hero-bottom .round-link {
     margin-top: 0;
   }
-  .hero-bottom p {
-    font-size: 16px;
-  }
 }
 /* Present the book itself, without the reader toolbar around the captured spread. */
 .book-leaf {
@@ -3223,11 +3207,6 @@ dialog[data-device="tablet"] #dialog-content {
   }
   .hero-bottom {
     position: relative;
-  }
-  .hero-bottom .round-link {
-    position: absolute;
-    right: 0;
-    bottom: 0;
   }
   .project-info {
     width: 82%;
