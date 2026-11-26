@@ -4,6 +4,9 @@ The page is composed in `src/pages/index.astro`. Each section lives in
 `src/components/portfolio/`; shared responsive styles are in `src/styles/portfolio.css`.
 Direct contact destinations are defined once in `src/data/site.ts`.
 
+The [four-layer design reference](design-system.md) maps the current foundations, components,
+patterns and screens to their implementation.
+
 ## Accepted design intent
 
 Keep the page clear for business visitors: concrete project names, useful facts and short
