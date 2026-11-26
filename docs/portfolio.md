@@ -4,6 +4,9 @@ The page is composed in `src/pages/index.astro`. Each section lives in
 `src/components/portfolio/`; shared responsive styles are in `src/styles/portfolio.css`.
 Direct contact destinations are defined once in `src/data/site.ts`.
 
+The [four-layer design reference](design-system.md) maps the current foundations, components,
+patterns and screens to their implementation.
+
 ## Accepted design intent
 
 Keep the page clear for business visitors: concrete project names, useful facts and short
@@ -51,6 +54,8 @@ client’s view: Jithu in the header, his incoming messages on the left, and the
 messages and delivery ticks on the right. Small circular expand buttons sit just below the bottom-right of the design and chat previews, clear of the device frames. The icon buttons and preview images open the same image dialog; each button has a specific accessible name and a 44px tap target.
 
 ## Verification
+
+Check the affected motion with reduced-motion enabled as well as the normal setting.
 
 Run `npm test`, `npx astro check` and `npm run test:browser`. The browser command builds first and
 starts a local Cloudflare Worker. Install Chromium with `npx playwright install chromium` when

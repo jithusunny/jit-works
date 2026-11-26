@@ -81,6 +81,8 @@ Briefly nudge when work bypasses the active item, duplicates status, reopens set
 
 - Tests and code define implemented behavior.
 - `docs/README.md` defines where durable product knowledge belongs.
+- `docs/design-system.md` maps the portfolio's implemented foundations, components, patterns and
+  screens; keep it current when their shared contracts change.
 - Current specifications describe cross-cutting behavior and evolve with it.
 - Important, hard-to-reverse technical decisions belong in short ADRs. A Decision issue tracks a choice still being made; it is not the accepted record.
 - Risks are issues. Research is dated evidence. Do not create duplicate status catalogs or roadmaps.

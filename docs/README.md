@@ -2,6 +2,9 @@
 
 Keep only durable, current product knowledge here. GitHub issues own work, status, and unresolved choices.
 
+- [Portfolio design system](design-system.md): implemented foundations, components, patterns and screens.
+- [Maintaining the portfolio](portfolio.md): design intent, media rules and verification.
+
 ## Put knowledge here when
 
 - `specs/`: current cross-cutting behavior or contracts that several changes must understand. Create the directory when the first real specification is needed.
