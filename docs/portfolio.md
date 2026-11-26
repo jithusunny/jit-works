@@ -55,6 +55,8 @@ messages and delivery ticks on the right. Small circular expand buttons sit just
 
 ## Verification
 
+Check the affected motion with reduced-motion enabled as well as the normal setting.
+
 Run `npm test`, `npx astro check` and `npm run test:browser`. The browser command builds first and
 starts a local Cloudflare Worker. Install Chromium with `npx playwright install chromium` when
 needed. Browser tests cover nine viewport sizes, including phone/tablet landscape, compact

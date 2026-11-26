@@ -3,11 +3,14 @@
 This reference describes the implemented jit.works design in four layers: foundations,
 components, patterns and screens. It is a map of the existing website, not a new component
 library. [Maintaining the portfolio](portfolio.md) owns the design intent, media rules and
-verification workflow; this document explains how the pieces fit together.
+verification workflow; this document explains how the pieces fit together. The palette, type and
+identity belong to jit.works. Another brand can reuse the four-layer structure and interaction
+contracts while establishing its own visual identity.
 
 The [stylesheet](../src/styles/portfolio.css) and rendered page remain authoritative for exact
 values. The stylesheet contains later refinements and responsive overrides: inspect every
-matching selector, not just its first declaration. Line links below locate relevant rules;
+matching selector, not just its first declaration. Some responsive queries also appear in markup
+and scripts. Line links below locate relevant rules;
 selector names remain useful when lines move.
 
 ## 1. Foundations
@@ -38,21 +41,10 @@ artwork. These are [identity exceptions](../src/styles/portfolio.css#L6876), not
 for body copy.
 
 **Space and scale.** `--gutter` is `clamp(24px, 5.5vw, 150px)`, overridden to 24px up to 700px,
-30px on short landscape screens, and 19px up to 360px. Section padding, reading widths, gaps,
+30px on short landscape screens up to 950px wide, and 19px up to 360px. Section padding, reading widths, gaps,
 radii and shadows are owned by their selectors; there is no universal spacing or radius scale.
 For example, desktop `.project-info` is limited to 390px while the adjacent media can grow.
 [Reading-column rules](../src/styles/portfolio.css#L3207).
-
-Representative rendered values checked on 26 November 2026 illustrate the responsive scale;
-they are observations, not additional breakpoints:
-
-| Viewport | Body size / line height | Hero title | Horizontal hero padding |
-| --- | --- | --- | --- |
-| 390 × 844 | 16 / 24px | 49px | 24px |
-| 844 × 390 | 18 / 27px | 45px | 30px |
-| 768 × 1024 | 18 / 27px | 68px | 42.24px |
-| 1440 × 900 | 18 / 27px | 84.96px | 79.2px |
-| 2560 × 1440 | 18 / 27px | 148px | 140.8px |
 
 **Motion and input.** Motion supports orientation without gating content. The
 [reveal script](../src/scripts/reveal.js) keeps content visible and adds a small entrance movement.
@@ -112,8 +104,11 @@ Phone, tablet and desktop are compositions of this same page, not separate route
 tablets and short landscape screens have specific layout rules; width alone is insufficient.
 The reader rotates to a portrait tablet at 700px, compact project cards stay frameless, and
 feedback uses a phone presentation for narrow screens and landscape viewports up to 950px wide
-and 500px tall. Preserve these
-exceptions when changing surrounding layouts.
+and 500px tall, plus a tablet frame at 701–950px in portrait. Both ProjectBoard presentations
+switch from laptop to phone at widths up to 700px. Keep the corresponding queries in
+[project markup](../src/components/portfolio/Projects.astro),
+[project-frame behaviour](../src/scripts/project-frame.js) and
+[feedback behaviour](../src/scripts/feedback-demo.js) consistent when changing these layouts.
 
 The opened image/video dialog is another page state. Arrow keys move only within its current
 collage, project, collaboration example or service group. The [menu](../public/demos/menu/index.html)
@@ -123,7 +118,7 @@ their own internal screens and controls, not site-wide design primitives.
 ## Keeping the reference current
 
 Change the owning selector/component first, then update the affected layer here when its shared
-contract changes. Update [portfolio.md](portfolio.md) when design intent or maintainer behaviour
+contract changes. Recheck line links after stylesheet edits. Update [portfolio.md](portfolio.md) when design intent or maintainer behaviour
 changes. Do not add a parallel catalogue of every CSS value or turn a product-specific exception
 into a global rule without a reason.
 
